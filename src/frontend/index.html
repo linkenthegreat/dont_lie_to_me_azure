@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Don't Lie To Me – Anti-Scam Assistant</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <h1>🛡️ Don't Lie To Me</h1>
+      <p class="tagline">Azure-powered anti-scam assistant</p>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- ── Input Section ───────────────────────────────────────────── -->
+    <section class="card input-section">
+      <h2>Analyze a Message</h2>
+
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="text" role="tab" aria-selected="true">
+          📝 Paste Text
+        </button>
+        <button class="tab" data-tab="image" role="tab" aria-selected="false">
+          🖼️ Upload Screenshot
+        </button>
+      </div>
+
+      <!-- Text input tab -->
+      <div id="tab-text" class="tab-panel active">
+        <label for="message-input" class="sr-only">Message to analyze</label>
+        <textarea
+          id="message-input"
+          rows="8"
+          placeholder="Paste the suspicious message here…"
+          aria-label="Message to analyze"
+        ></textarea>
+      </div>
+
+      <!-- Image upload tab -->
+      <div id="tab-image" class="tab-panel">
+        <label class="file-drop-zone" for="image-input" id="drop-zone">
+          <span id="drop-zone-text">
+            📂 Click to select a screenshot, or drag &amp; drop it here
+          </span>
+          <input
+            type="file"
+            id="image-input"
+            accept="image/*"
+            aria-label="Upload screenshot"
+          />
+        </label>
+        <p class="hint">
+          The image will be sent to the backend as a base64-encoded string.
+          Extracted text will be analyzed.
+        </p>
+      </div>
+
+      <!-- Analysis mode selector -->
+      <div class="mode-selector">
+        <label for="analysis-mode">Analysis mode:</label>
+        <select id="analysis-mode" aria-label="Analysis mode">
+          <option value="classify">⚡ Quick Classification</option>
+          <option value="analyze">🔬 Detailed Analysis</option>
+          <option value="guidance">🧭 Safety Guidance</option>
+        </select>
+      </div>
+
+      <button id="analyze-btn" class="btn btn-primary">
+        Analyze Message
+      </button>
+    </section>
+
+    <!-- ── Loading Indicator ────────────────────────────────────────── -->
+    <div id="loading" class="loading hidden" aria-live="polite">
+      <div class="spinner"></div>
+      <p>Analyzing…</p>
+    </div>
+
+    <!-- ── Results Section ──────────────────────────────────────────── -->
+    <section id="results-section" class="card results-section hidden" aria-live="polite">
+      <h2>Results</h2>
+
+      <!-- Classification result -->
+      <div id="result-classify" class="result-block hidden">
+        <div id="classification-badge" class="badge"></div>
+        <p><strong>Confidence:</strong> <span id="confidence-value"></span></p>
+        <p><strong>Reasoning:</strong> <span id="reasoning-value"></span></p>
+      </div>
+
+      <!-- Detailed analysis result -->
+      <div id="result-analyze" class="result-block hidden">
+        <div class="result-group">
+          <h3>🚩 Red Flags</h3>
+          <ul id="red-flags-list"></ul>
+        </div>
+        <div class="result-group">
+          <h3>🎭 Persuasion Techniques</h3>
+          <ul id="persuasion-list"></ul>
+        </div>
+        <div class="result-group">
+          <h3>🎭 Impersonation Indicators</h3>
+          <ul id="impersonation-list"></ul>
+        </div>
+        <div class="result-group">
+          <h3>📋 Summary</h3>
+          <p id="analysis-summary"></p>
+        </div>
+      </div>
+
+      <!-- Safety guidance result -->
+      <div id="result-guidance" class="result-block hidden">
+        <div class="result-group">
+          <h3>🚨 Immediate Actions</h3>
+          <ol id="immediate-actions-list"></ol>
+        </div>
+        <div class="result-group">
+          <h3>📢 Reporting Steps</h3>
+          <ol id="reporting-steps-list"></ol>
+        </div>
+        <div class="result-group">
+          <h3>🔒 Prevention Tips</h3>
+          <ul id="prevention-tips-list"></ul>
+        </div>
+        <div class="result-group">
+          <h3>🔗 Resources</h3>
+          <ul id="resources-list"></ul>
+        </div>
+      </div>
+
+      <!-- Error message -->
+      <div id="result-error" class="result-block error-block hidden">
+        <p id="error-message"></p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Powered by Azure AI Foundry &amp; Azure Functions</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
