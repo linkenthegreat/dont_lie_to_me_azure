@@ -1,0 +1,14 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AZURE_AI_ENDPOINT": "https://<your-ai-foundry-endpoint>.openai.azure.com/",
+    "AZURE_AI_DEPLOYMENT_NAME": "gpt-4o",
+    "AZURE_AI_API_VERSION": "2024-02-01",
+    "AZURE_KEYVAULT_URL": "https://<your-keyvault-name>.vault.azure.net/",
+    "AZURE_AI_API_KEY": "<your-api-key-or-use-managed-identity>",
+    "STORAGE_ACCOUNT_CONNECTION_STRING": "DefaultEndpointsProtocol=https;AccountName=<your-account>;AccountKey=<your-key>;EndpointSuffix=core.windows.net",
+    "COSMOS_DB_CONNECTION_STRING": ""
+  }
+}

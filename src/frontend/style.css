@@ -1,0 +1,329 @@
+/* ── Reset & Base ──────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-bg:          #f0f4f8;
+  --color-surface:     #ffffff;
+  --color-primary:     #0078d4;   /* Azure blue */
+  --color-primary-hover: #005a9e;
+  --color-text:        #1a1a2e;
+  --color-muted:       #6c757d;
+  --color-border:      #dee2e6;
+  --color-scam:        #d32f2f;
+  --color-likely-scam: #f57c00;
+  --color-suspicious:  #fbc02d;
+  --color-safe:        #388e3c;
+  --color-error-bg:    #fdecea;
+  --color-error-text:  #b71c1c;
+  --radius:            8px;
+  --shadow:            0 2px 8px rgba(0,0,0,0.08);
+  --transition:        0.2s ease;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────── */
+.site-header {
+  background: var(--color-primary);
+  color: #fff;
+  padding: 1.5rem 0;
+  text-align: center;
+}
+
+.site-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.tagline {
+  font-size: 0.95rem;
+  opacity: 0.85;
+  margin-top: 0.25rem;
+}
+
+/* ── Cards ──────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.75rem;
+  margin: 1.5rem 0;
+}
+
+.card h2 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  color: var(--color-primary);
+}
+
+/* ── Tabs ───────────────────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.tab {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background var(--transition), color var(--transition);
+}
+
+.tab:hover {
+  background: #e2e8f0;
+}
+
+.tab.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+/* ── Textarea ───────────────────────────────────────────────────────────── */
+textarea {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color var(--transition);
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(0,120,212,0.15);
+}
+
+/* ── File Drop Zone ─────────────────────────────────────────────────────── */
+.file-drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 2rem;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+  text-align: center;
+}
+
+.file-drop-zone:hover,
+.file-drop-zone.drag-over {
+  border-color: var(--color-primary);
+  background: #f0f7ff;
+}
+
+.file-drop-zone input[type="file"] {
+  display: none;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  margin-top: 0.5rem;
+}
+
+/* ── Mode selector ──────────────────────────────────────────────────────── */
+.mode-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.mode-selector label {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.mode-selector select {
+  flex: 1;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-block;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.7rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition);
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Loading ────────────────────────────────────────────────────────────── */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  color: var(--color-muted);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Results ────────────────────────────────────────────────────────────── */
+.results-section h2 {
+  margin-bottom: 1rem;
+}
+
+.result-block {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.result-group {
+  margin-bottom: 1.25rem;
+}
+
+.result-group h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--color-primary);
+}
+
+.result-group ul,
+.result-group ol {
+  padding-left: 1.5rem;
+}
+
+.result-group li {
+  margin-bottom: 0.3rem;
+  font-size: 0.95rem;
+}
+
+/* ── Classification Badge ───────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 0.35rem 0.85rem;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-SCAM        { background: var(--color-scam);        color: #fff; }
+.badge-LIKELY_SCAM { background: var(--color-likely-scam); color: #fff; }
+.badge-SUSPICIOUS  { background: var(--color-suspicious);  color: #333; }
+.badge-SAFE        { background: var(--color-safe);        color: #fff; }
+.badge-UNKNOWN     { background: var(--color-muted);       color: #fff; }
+
+/* ── Error Block ────────────────────────────────────────────────────────── */
+.error-block {
+  background: var(--color-error-bg);
+  border-left: 4px solid var(--color-error-text);
+  border-radius: var(--radius);
+  padding: 1rem;
+  color: var(--color-error-text);
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+.site-footer {
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+  padding: 1rem 0;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  margin-top: 2rem;
+}
+
+/* ── Accessibility ──────────────────────────────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .site-header h1 { font-size: 1.5rem; }
+  .card { padding: 1.25rem; }
+  .tabs { flex-direction: column; }
+}
