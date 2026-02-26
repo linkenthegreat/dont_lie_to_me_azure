@@ -14,10 +14,26 @@ import logging
 import json
 import azure.functions as func
 from shared.ai_client import AzureAIClient
+from shared.url_checker import URLChecker
+from shared.models import CheckURLRequest, CheckURLResponse
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
 logger = logging.getLogger(__name__)
+
+# Initialize URL checker (will raise error if API key not configured)
+_url_checker = None
+
+def _get_url_checker() -> URLChecker:
+    """Lazy initialization of URL checker."""
+    global _url_checker
+    if _url_checker is None:
+        try:
+            _url_checker = URLChecker()
+        except ValueError as e:
+            logger.error("Failed to initialize URL checker: %s", e)
+            # Will be handled in the endpoint
+    return _url_checker
 
 
 # ---------------------------------------------------------------------------
@@ -35,8 +51,131 @@ def health(req: func.HttpRequest) -> func.HttpResponse:
 
 
 # ---------------------------------------------------------------------------
-# Scam classification
+# URL threat checking
 # ---------------------------------------------------------------------------
+
+@app.route(route="check-url", methods=["POST"])
+def check_url(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Check if a URL is flagged as a threat by threat intelligence sources.
+
+    Performs parallel checks using:
+    - Google Safe Browsing API (phishing/malware detection)
+    - URLhaus API (malware database)
+    - Local risk heuristics (punycode, typosquatting, etc.)
+
+    Request body (JSON):
+        {
+            "url": "<URL to check>",
+            "use_cache": true  (optional, default: true)
+        }
+
+    Response (JSON):
+        {
+            "success": true,
+            "data": {
+                "url": "<normalized URL>",
+                "overall_verdict": "THREAT_DETECTED" | "SUSPICIOUS" | "NOT_FLAGGED" | "UNABLE_TO_VERIFY",
+                "confidence": "HIGH" | "MODERATE" | "LOW",
+                "primary_threat_type": "PHISHING" | "MALWARE" | "SCAM" | ... | null,
+                "recommendation": "<human-readable recommendation>",
+                "sources": {
+                    "google_safe_browsing": {...},
+                    "urlhaus": {...},
+                    "risk_hints": {...}
+                },
+                "timestamp": "<ISO 8601 timestamp>",
+                "total_response_time_ms": <int>,
+                "cached": false
+            },
+            "error": null,
+            "error_code": null
+        }
+
+    Error Response (400-500):
+        {
+            "success": false,
+            "data": null,
+            "error": "<error message>",
+            "error_code": "<error code>"
+        }
+    """
+    try:
+        body = req.get_json()
+    except ValueError:
+        response = CheckURLResponse(
+            success=False,
+            error="Request body must be valid JSON",
+            error_code="INVALID_JSON",
+        )
+        return func.HttpResponse(
+            response.model_dump_json(),
+            status_code=400,
+            mimetype="application/json",
+        )
+
+    # Validate request
+    try:
+        request_data = CheckURLRequest(**body)
+    except ValueError as exc:
+        response = CheckURLResponse(
+            success=False,
+            error=f"Invalid request: {str(exc)}",
+            error_code="INVALID_REQUEST",
+        )
+        return func.HttpResponse(
+            response.model_dump_json(),
+            status_code=400,
+            mimetype="application/json",
+        )
+
+    # Get URL checker
+    url_checker = _get_url_checker()
+    if url_checker is None:
+        response = CheckURLResponse(
+            success=False,
+            error="URL checker is not available. Please check configuration.",
+            error_code="CHECKER_UNAVAILABLE",
+        )
+        return func.HttpResponse(
+            response.model_dump_json(),
+            status_code=500,
+            mimetype="application/json",
+        )
+
+    # Perform check
+    try:
+        result = url_checker.check_url(
+            url=request_data.url,
+            use_cache=request_data.use_cache,
+        )
+        response = CheckURLResponse(
+            success=True,
+            data=result,
+            error=None,
+            error_code=None,
+        )
+        return func.HttpResponse(
+            response.model_dump_json(),
+            status_code=200,
+            mimetype="application/json",
+        )
+
+    except Exception as exc:
+        logger.exception("URL check failed for URL: %s", request_data.url)
+        response = CheckURLResponse(
+            success=False,
+            error=f"Check failed: {str(exc)}",
+            error_code="CHECK_FAILED",
+        )
+        return func.HttpResponse(
+            response.model_dump_json(),
+            status_code=500,
+            mimetype="application/json",
+        )
+
+
+
 
 @app.route(route="classify", methods=["POST"])
 def classify_scam(req: func.HttpRequest) -> func.HttpResponse:
