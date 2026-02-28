@@ -1,0 +1,121 @@
+graph TD
+    %% ══════════════════════════════════════════════════════════════
+    %% Don't Lie To Me v2.0 – Simplified Production Architecture
+    %% Microsoft Foundry · Agent Framework · Azure MCP ·
+    %% GitHub Copilot · Azure Services
+    %% ══════════════════════════════════════════════════════════════
+
+    User["👤 User"] -->|"HTTPS"| SWA
+
+    %% ════════════════════════════════════════
+    %% FRONTEND
+    %% ════════════════════════════════════════
+    SWA["Azure Static Web Apps<br/>Frontend · CDN · Auto SSL<br/>Staging per PR"]
+    SWA -->|"API proxy"| FuncApp
+
+    %% ════════════════════════════════════════
+    %% BACKEND API
+    %% ════════════════════════════════════════
+    subgraph Compute["Azure Functions – Python 3.11"]
+        FuncApp["HTTP Endpoints<br/>/classify · /analyze<br/>/guidance · /health"]
+    end
+
+    FuncApp -->|"User input"| ContentSafety
+
+    %% ════════════════════════════════════════
+    %% MICROSOFT FOUNDRY
+    %% ════════════════════════════════════════
+    subgraph Foundry["Microsoft Foundry"]
+
+        ContentSafety["Azure Content Safety<br/>Pre-filter · Jailbreak<br/>detection · PII redaction"]
+
+        subgraph AgentService["Foundry Agent Service"]
+            Orchestrator["Orchestrator Agent<br/>Intent routing"]
+            ClassifyAgent["Classifier Agent<br/>SCAM · LIKELY<br/>SUSPICIOUS · SAFE"]
+            AnalyzeAgent["Analyzer Agent<br/>Red flags · Persuasion<br/>Impersonation"]
+            GuidanceAgent["Guidance Agent<br/>Safety steps<br/>Reporting · Prevention"]
+        end
+
+        GPT4o["GPT-4o<br/>Deep analysis"]
+        GPT4oMini["GPT-4o mini<br/>Fast classification"]
+
+    end
+
+    ContentSafety -->|"Filtered"| Orchestrator
+    Orchestrator --> ClassifyAgent
+    Orchestrator --> AnalyzeAgent
+    Orchestrator --> GuidanceAgent
+    ClassifyAgent --> GPT4oMini
+    AnalyzeAgent --> GPT4o
+    GuidanceAgent --> GPT4o
+
+    %% ════════════════════════════════════════
+    %% AZURE MCP
+    %% ════════════════════════════════════════
+    subgraph MCP["Azure MCP Server"]
+        MCPServer["MCP Tools Interface"]
+        ToolStore["store_analysis"]
+        ToolQuery["query_history"]
+        ToolScam["check_known_scam"]
+    end
+
+    Orchestrator -->|"Tool calls<br/>MCP protocol"| MCPServer
+    MCPServer --> ToolStore
+    MCPServer --> ToolQuery
+    MCPServer --> ToolScam
+
+    %% ════════════════════════════════════════
+    %% DATA
+    %% ════════════════════════════════════════
+    subgraph Data["Data Layer"]
+        CosmosDB["Azure Cosmos DB<br/>NoSQL · PK: /sessionId"]
+        BlobStorage["Azure Blob Storage<br/>Images · Logs"]
+    end
+
+    ToolStore -->|"Upsert"| CosmosDB
+    ToolQuery -->|"Query"| CosmosDB
+    ToolScam -->|"Query"| CosmosDB
+    FuncApp -->|"Store images"| BlobStorage
+
+    %% ════════════════════════════════════════
+    %% CROSS-CUTTING
+    %% ════════════════════════════════════════
+    KeyVault["Azure Key Vault<br/>Secrets · Managed Identity"]
+    AppInsights["Application Insights<br/>Tracing · Metrics · Alerts"]
+
+    FuncApp -.->|"RBAC"| KeyVault
+    FuncApp -.->|"Telemetry"| AppInsights
+    Foundry -.->|"Agent traces"| AppInsights
+
+    %% ════════════════════════════════════════
+    %% CI/CD & COPILOT
+    %% ════════════════════════════════════════
+    subgraph DevPlatform["Developer Platform"]
+        Copilot["GitHub Copilot<br/>Code gen · PR reviews"]
+        Actions["GitHub Actions<br/>Build · Test · Deploy<br/>Bicep IaC validation"]
+    end
+
+    Copilot -.->|"Assists"| Actions
+    Actions -.->|"Deploy"| SWA
+    Actions -.->|"Deploy"| Compute
+
+    %% ════════════════════════════════════════
+    %% STYLES
+    %% ════════════════════════════════════════
+    classDef frontend fill:#00bcf2,stroke:#0099cc,color:#fff
+    classDef compute fill:#0078d4,stroke:#005a9e,color:#fff
+    classDef foundry fill:#6b3fa0,stroke:#4b2d73,color:#fff
+    classDef mcp fill:#e3008c,stroke:#b4006c,color:#fff
+    classDef data fill:#00a36c,stroke:#007a50,color:#fff
+    classDef crosscut fill:#d83b01,stroke:#a52c00,color:#fff
+    classDef monitor fill:#ffb900,stroke:#cc9400,color:#000
+    classDef dev fill:#2ea043,stroke:#238636,color:#fff
+
+    class SWA frontend
+    class FuncApp compute
+    class ContentSafety,Orchestrator,ClassifyAgent,AnalyzeAgent,GuidanceAgent,GPT4o,GPT4oMini foundry
+    class MCPServer,ToolStore,ToolQuery,ToolScam mcp
+    class CosmosDB,BlobStorage data
+    class KeyVault crosscut
+    class AppInsights monitor
+    class Copilot,Actions dev
