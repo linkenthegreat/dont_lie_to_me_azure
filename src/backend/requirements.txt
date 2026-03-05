@@ -1,7 +1,8 @@
-azure-functions>=1.21.0
+azure-functions>=1.25.0b3
 openai>=1.30.0
 azure-identity>=1.16.0
 azure-keyvault-secrets>=4.8.0
 azure-storage-blob>=12.20.0
+azure-cosmos>=4.7.0
 Pillow>=10.3.0
 requests>=2.32.0
