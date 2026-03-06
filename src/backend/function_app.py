@@ -2,16 +2,10 @@
 Dont Lie To Me – Azure
 Azure Functions v2 (Python) entry point.
 
-Endpoints
----------
-POST /api/classify   – Scam classification
-POST /api/analyze    – Detailed message analysis
-POST /api/guidance   – Safety guidance generation
-GET  /api/health     – Health check
+HTTP endpoints are served via Blueprint.
+MCP tools are registered directly on the FunctionApp.
 """
 
-import logging
-import json
 import azure.functions as func
 from shared.ai_client import AzureAIClient
 from shared.url_checker import URLChecker

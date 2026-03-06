@@ -1,0 +1,85 @@
+graph TD
+    %% ══════════════════════════════════════════════════════════════
+    %% Don't Lie To Me v1.0 – Current Architecture (As-Is)
+    %% ══════════════════════════════════════════════════════════════
+
+    User["👤 User"]
+    User --> Frontend
+
+    %% ════════════════════════════════════════
+    %% FRONTEND
+    %% ════════════════════════════════════════
+    Frontend["Static HTML / CSS / JS"]
+    Frontend --> FuncApp
+
+    %% ════════════════════════════════════════
+    %% BACKEND API
+    %% ════════════════════════════════════════
+    subgraph Compute["Azure Functions"]
+        FuncApp["/classify · /analyze · /guidance · /health"]
+    end
+
+    FuncApp --> AIClient
+
+    %% ════════════════════════════════════════
+    %% AI LAYER
+    %% ════════════════════════════════════════
+    subgraph AILayer["AI Layer – Direct Calls"]
+        AIClient["ai_client.py"]
+        AIFoundry["Azure AI Foundry"]
+    end
+
+    AIClient --> AIFoundry
+
+    %% ════════════════════════════════════════
+    %% DATA
+    %% ════════════════════════════════════════
+    subgraph Data["Data Layer"]
+        BlobStorage["Azure Blob Storage"]
+        StorageStub["storage.py ⚠️ Stub"]
+    end
+
+    FuncApp --> BlobStorage
+    FuncApp -.-> StorageStub
+
+    %% ════════════════════════════════════════
+    %% CROSS-CUTTING
+    %% ════════════════════════════════════════
+    KeyVault["Azure Key Vault"]
+    AppInsights["Application Insights"]
+
+    AIClient -.-> KeyVault
+    FuncApp -.-> AppInsights
+
+    %% ════════════════════════════════════════
+    %% DEVELOPER PLATFORM
+    %% ════════════════════════════════════════
+    subgraph DevPlatform["Developer Platform"]
+        Copilot["GitHub Copilot"]
+        IaC["Bicep IaC"]
+        Tests["Unit Tests"]
+    end
+
+    IaC -.-> Compute
+    Tests -.-> FuncApp
+
+    %% ════════════════════════════════════════
+    %% STYLES
+    %% ════════════════════════════════════════
+    classDef frontend fill:#00bcf2,stroke:#0099cc,color:#fff
+    classDef compute fill:#0078d4,stroke:#005a9e,color:#fff
+    classDef ai fill:#6b3fa0,stroke:#4b2d73,color:#fff
+    classDef data fill:#00a36c,stroke:#007a50,color:#fff
+    classDef stub fill:#9e9e9e,stroke:#757575,color:#fff
+    classDef security fill:#d83b01,stroke:#a52c00,color:#fff
+    classDef monitor fill:#ffb900,stroke:#cc9400,color:#000
+    classDef dev fill:#2ea043,stroke:#238636,color:#fff
+
+    class Frontend frontend
+    class FuncApp compute
+    class AIClient,AIFoundry ai
+    class BlobStorage data
+    class StorageStub stub
+    class KeyVault security
+    class AppInsights monitor
+    class Copilot,IaC,Tests dev
