@@ -34,6 +34,9 @@ jobs:
           pip install -r requirements.txt
           pip install pytest
 
+      - name: Verify function_app.py is importable
+        run: python -c "import function_app"
+
       - name: Run tests
         run: pytest tests -q
 

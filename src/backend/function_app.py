@@ -6,6 +6,9 @@ HTTP endpoints are served via Blueprint.
 MCP tools are registered directly on the FunctionApp.
 """
 
+import json
+import logging
+
 import azure.functions as func
 from shared.ai_client import AzureAIClient
 from shared.url_checker import URLChecker
