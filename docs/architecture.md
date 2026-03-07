@@ -22,6 +22,8 @@
 │   POST /api/guidance   – Safety guidance generation     │
 │   GET  /api/health     – Liveness probe                 │
 │                                                         │
+│   prompts.yaml         – Centralized AI system prompts  │
+│   shared/prompts.py    – Prompt loader with fallback    │
 │   shared/ai_client.py  – Azure AI Foundry wrapper       │
 │   shared/keyvault.py   – Key Vault secret helper        │
 │   shared/storage.py    – Optional query logging stub    │
@@ -49,10 +51,33 @@
 | Frontend | HTML5 / Vanilla JS / CSS | User interface – paste text, upload screenshots, view results |
 | Backend API | Azure Functions v2 (Python 3.11) | REST endpoints, orchestration |
 | AI Model | Azure AI Foundry (GPT-4o) | Natural language understanding, classification, guidance |
+| Prompt System | `prompts.yaml` + loader | Centralized AI system prompts with fallback pattern |
 | Secret management | Azure Key Vault | Securely store API keys and connection strings |
 | Telemetry | Azure Application Insights | Logging, tracing, performance monitoring |
 | Storage (optional) | Azure Blob Storage | Persist query logs for analytics |
 | Infrastructure | Bicep | Repeatable, version-controlled IaC |
+
+## Prompt Management Architecture
+
+The system uses a **centralized prompt configuration** to enable rapid iteration without code changes:
+
+- **`prompts.yaml`**: Single source of truth for all AI system prompts, model settings, temperature, and token limits
+- **`shared/prompts.py`**: Loader module with PyYAML for runtime configuration
+- **Fallback pattern**: Each service contains an embedded `_FALLBACK_SYSTEM_PROMPT` constant for operational resilience
+
+**Benefits:**
+- Prompt engineers can iterate without deploying code
+- Version control for prompt evolution
+- Graceful degradation if YAML is missing or malformed
+- Consistent model selection and temperature settings
+
+**Example workflow:**
+1. Edit `prompts.yaml` to tune scam detection behavior
+2. Test locally via Azure Functions
+3. Commit YAML changes (no Python code modified)
+4. Deploy with confidence - fallback ensures stability
+
+See [CONTRIBUTING.md](CONTRIBUTING.md#ai-prompt-management) for detailed editing guidelines.
 
 ## API Endpoints
 

@@ -81,6 +81,10 @@ dont_lie_to_me_azure/
 
 ## AI Prompt Management
 
+> **Note:** This prompt management system is currently being implemented (Phase A.5). 
+> Current code has prompts embedded inline in `function_app.py` and `blueprints/http_api.py`.
+> This section describes the target architecture.
+
 ### Architecture (v3.0)
 
 System prompts for AI agents are centralized in `src/backend/prompts.yaml`.
