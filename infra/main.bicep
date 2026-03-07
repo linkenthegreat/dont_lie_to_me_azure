@@ -13,11 +13,8 @@
   environmentName     : Short environment tag, e.g. "dev" / "prod".
   location            : Azure region (defaults to deployment location).
   aiDeploymentName    : Azure OpenAI deployment name (e.g. "gpt-4o").
-<<<<<<< HEAD
-=======
   enableMultiRegion   : Enable multi-region deployment with Front Door.
   secondaryLocation   : Secondary Azure region for geo-redundancy.
->>>>>>> origin/main
 */
 
 targetScope = 'subscription'
@@ -26,19 +23,12 @@ targetScope = 'subscription'
 @allowed(['dev', 'staging', 'prod'])
 param environmentName string = 'dev'
 
-<<<<<<< HEAD
-@description('Azure region for all resources.')
-=======
 @description('Primary Azure region for all resources.')
->>>>>>> origin/main
 param location string = deployment().location
 
 @description('Azure OpenAI deployment name (model).')
 param aiDeploymentName string = 'gpt-4o'
 
-<<<<<<< HEAD
-// ── Resource group ────────────────────────────────────────────────────────
-=======
 @description('Enable multi-region deployment with Azure Front Door.')
 param enableMultiRegion bool = false
 
@@ -46,18 +36,13 @@ param enableMultiRegion bool = false
 param secondaryLocation string = 'westus2'
 
 // -- Resource group --------------------------------------------------------
->>>>>>> origin/main
 resource rg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   name: 'rg-dont-lie-to-me-${environmentName}'
   location: location
 }
 
-<<<<<<< HEAD
-// ── Modules ───────────────────────────────────────────────────────────────
-=======
 // -- Modules ---------------------------------------------------------------
 
->>>>>>> origin/main
 module storage 'modules/storage.bicep' = {
   name: 'storage'
   scope: rg
@@ -67,8 +52,6 @@ module storage 'modules/storage.bicep' = {
   }
 }
 
-<<<<<<< HEAD
-=======
 module cosmosDb 'modules/cosmosdb.bicep' = {
   name: 'cosmosdb'
   scope: rg
@@ -87,7 +70,6 @@ module redis 'modules/redis.bicep' = {
   }
 }
 
->>>>>>> origin/main
 module functions 'modules/functions.bicep' = {
   name: 'functions'
   scope: rg
@@ -96,11 +78,8 @@ module functions 'modules/functions.bicep' = {
     location: location
     storageAccountName: storage.outputs.storageAccountName
     aiDeploymentName: aiDeploymentName
-<<<<<<< HEAD
-=======
     redisConnectionString: redis.outputs.redisConnectionString
     cosmosConnectionString: cosmosDb.outputs.cosmosConnectionString
->>>>>>> origin/main
   }
 }
 
@@ -114,11 +93,6 @@ module keyVault 'modules/keyvault.bicep' = {
   }
 }
 
-<<<<<<< HEAD
-// ── Outputs ───────────────────────────────────────────────────────────────
-output functionAppUrl string = functions.outputs.functionAppUrl
-output keyVaultUrl    string = keyVault.outputs.keyVaultUrl
-=======
 module monitoring 'modules/monitoring.bicep' = {
   name: 'monitoring'
   scope: rg
@@ -169,4 +143,3 @@ output keyVaultUrl        string = keyVault.outputs.keyVaultUrl
 output cosmosEndpoint     string = cosmosDb.outputs.cosmosEndpoint
 output redisHostName      string = redis.outputs.redisHostName
 output frontDoorEndpoint  string = enableMultiRegion ? frontDoor.outputs.frontDoorEndpoint : ''
->>>>>>> origin/main

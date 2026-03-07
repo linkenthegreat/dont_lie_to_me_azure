@@ -34,12 +34,9 @@ jobs:
           pip install -r requirements.txt
           pip install pytest
 
-<<<<<<< HEAD
-=======
       - name: Verify function_app.py is importable
         run: python -c "import function_app"
 
->>>>>>> origin/main
       - name: Run tests
         run: pytest tests -q
 
@@ -52,10 +49,6 @@ jobs:
       - name: Install Bicep CLI
         run: az bicep install
 
-<<<<<<< HEAD
-      - name: Validate Bicep compiles
-        run: az bicep build --file infra/main.bicep
-=======
       - name: Validate main Bicep compiles
         run: az bicep build --file infra/main.bicep
 
@@ -66,4 +59,3 @@ jobs:
           az bicep build --file infra/modules/cosmosdb.bicep
           az bicep build --file infra/modules/frontdoor.bicep
           az bicep build --file infra/modules/monitoring.bicep
->>>>>>> origin/main
