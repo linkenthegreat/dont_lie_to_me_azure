@@ -1,5 +1,9 @@
 {
   "IsEncrypted": false,
+  "Host": {
+    "CORS": "http://127.0.0.1:8080,http://localhost:8080",
+    "CORSCredentials": false
+  },
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "python",

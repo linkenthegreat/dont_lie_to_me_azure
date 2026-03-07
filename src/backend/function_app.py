@@ -17,7 +17,9 @@ from shared.ai_client import AzureAIClient
 from shared.url_checker import URLChecker
 from shared.models import CheckURLRequest, CheckURLResponse
 
-app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
+# Use anonymous auth by default so browser clients can call public endpoints
+# (classify/analyze/guidance/etc.) without function keys.
+app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 logger = logging.getLogger(__name__)
 
