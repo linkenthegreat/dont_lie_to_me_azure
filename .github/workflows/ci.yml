@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - "src/backend/**"
+      - "infra/**"
+      - ".github/workflows/ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Verify function_app.py is importable
+        run: python -c "import function_app"
+
+      - name: Run tests
+        run: pytest tests -q
+
+  validate-bicep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Bicep CLI
+        run: az bicep install
+
+      - name: Validate main Bicep compiles
+        run: az bicep build --file infra/main.bicep
+
+      - name: Validate individual Bicep modules
+        run: |
+          az bicep build --file infra/modules/functions.bicep
+          az bicep build --file infra/modules/redis.bicep
+          az bicep build --file infra/modules/cosmosdb.bicep
+          az bicep build --file infra/modules/frontdoor.bicep
+          az bicep build --file infra/modules/monitoring.bicep

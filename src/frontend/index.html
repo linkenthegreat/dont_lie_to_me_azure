@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Don't Lie To Me – Anti-Scam Assistant</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-row">
+      <div>
+        <h1 data-i18n="app_title">Don't Lie To Me</h1>
+        <p class="tagline" data-i18n="app_tagline">Azure-powered anti-scam assistant</p>
+      </div>
+      <div class="lang-selector">
+        <label for="lang-select" data-i18n="language_label">Language</label>
+        <select id="lang-select" aria-label="Language">
+          <option value="en">English</option>
+          <option value="es">Espanol</option>
+          <option value="fr">Francais</option>
+          <option value="de">Deutsch</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- Input Section -->
+    <section class="card input-section">
+      <h2 data-i18n="analyze_heading">Analyze a Message</h2>
+
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="text" role="tab" aria-selected="true">
+          <span data-i18n="tab_text">Paste Text</span>
+        </button>
+        <button class="tab" data-tab="image" role="tab" aria-selected="false">
+          <span data-i18n="tab_image">Upload Screenshot</span>
+        </button>
+      </div>
+
+      <!-- Text input tab -->
+      <div id="tab-text" class="tab-panel active">
+        <label for="message-input" class="sr-only">Message to analyze</label>
+        <textarea
+          id="message-input"
+          rows="8"
+          placeholder="Paste the suspicious message here..."
+          data-i18n-placeholder="placeholder_text"
+          aria-label="Message to analyze"
+        ></textarea>
+      </div>
+
+      <!-- Image upload tab -->
+      <div id="tab-image" class="tab-panel">
+        <label class="file-drop-zone" for="image-input" id="drop-zone">
+          <span id="drop-zone-text">
+            Click to select a screenshot, or drag &amp; drop it here
+          </span>
+          <input
+            type="file"
+            id="image-input"
+            accept="image/*"
+            aria-label="Upload screenshot"
+          />
+        </label>
+        <p class="hint">
+          The image will be sent to the backend as a base64-encoded string.
+        </p>
+      </div>
+
+      <!-- Analysis mode selector -->
+      <div class="mode-selector">
+        <label for="analysis-mode">Analysis mode:</label>
+        <select id="analysis-mode" aria-label="Analysis mode">
+          <option value="classify" data-i18n="mode_classify">Quick Classification</option>
+          <option value="analyze" data-i18n="mode_analyze">Detailed Analysis</option>
+          <option value="guidance" data-i18n="mode_guidance">Safety Guidance</option>
+          <option value="sentiment" data-i18n="mode_sentiment">Sentiment Analysis</option>
+        </select>
+      </div>
+
+      <button id="analyze-btn" class="btn btn-primary" data-i18n="btn_analyze">
+        Analyze Message
+      </button>
+    </section>
+
+    <!-- Loading Indicator -->
+    <div id="loading" class="loading hidden" aria-live="polite">
+      <div class="spinner"></div>
+      <p>Analyzing...</p>
+    </div>
+
+    <!-- Results Section -->
+    <section id="results-section" class="card results-section hidden" aria-live="polite">
+      <h2 data-i18n="results_title">Results</h2>
+
+      <!-- Classification result -->
+      <div id="result-classify" class="result-block hidden">
+        <div id="classification-badge" class="badge"></div>
+        <p><strong data-i18n="confidence_label">Confidence</strong>: <span id="confidence-value"></span></p>
+        <p><strong data-i18n="reasoning_label">Reasoning</strong>: <span id="reasoning-value"></span></p>
+      </div>
+
+      <!-- Detailed analysis result -->
+      <div id="result-analyze" class="result-block hidden">
+        <div class="result-group">
+          <h3 data-i18n="red_flags">Red Flags</h3>
+          <ul id="red-flags-list"></ul>
+        </div>
+        <div class="result-group">
+          <h3 data-i18n="persuasion_techniques">Persuasion Techniques</h3>
+          <ul id="persuasion-list"></ul>
+        </div>
+        <div class="result-group">
+          <h3 data-i18n="impersonation_indicators">Impersonation Indicators</h3>
+          <ul id="impersonation-list"></ul>
+        </div>
+        <div class="result-group">
+          <h3 data-i18n="summary">Summary</h3>
+          <p id="analysis-summary"></p>
+        </div>
+      </div>
+
+      <!-- Safety guidance result -->
+      <div id="result-guidance" class="result-block hidden">
+        <div class="result-group">
+          <h3 data-i18n="immediate_actions">Immediate Actions</h3>
+          <ol id="immediate-actions-list"></ol>
+        </div>
+        <div class="result-group">
+          <h3 data-i18n="reporting_steps">Reporting Steps</h3>
+          <ol id="reporting-steps-list"></ol>
+        </div>
+        <div class="result-group">
+          <h3 data-i18n="prevention_tips">Prevention Tips</h3>
+          <ul id="prevention-tips-list"></ul>
+        </div>
+        <div class="result-group">
+          <h3 data-i18n="resources">Resources</h3>
+          <ul id="resources-list"></ul>
+        </div>
+      </div>
+
+      <!-- Sentiment analysis result -->
+      <div id="result-sentiment" class="result-block hidden">
+        <div class="result-group">
+          <h3>Sentiment</h3>
+          <div id="sentiment-overview" class="sentiment-overview"></div>
+        </div>
+        <div class="result-group">
+          <h3>Manipulation Detection</h3>
+          <div id="manipulation-details"></div>
+        </div>
+        <div class="result-group">
+          <h3>Language Analysis</h3>
+          <div id="language-analysis"></div>
+        </div>
+        <div class="result-group">
+          <h3>Risk Assessment</h3>
+          <div id="risk-assessment" class="badge"></div>
+        </div>
+        <div class="result-group">
+          <h3 data-i18n="summary">Summary</h3>
+          <p id="sentiment-summary"></p>
+        </div>
+      </div>
+
+      <!-- Error message -->
+      <div id="result-error" class="result-block error-block hidden">
+        <p id="error-message"></p>
+      </div>
+
+      <!-- Feedback widget -->
+      <div id="feedback-widget" class="feedback-widget hidden">
+        <p data-i18n="feedback_title">Was this helpful?</p>
+        <div class="feedback-buttons">
+          <button class="btn btn-feedback" data-rating="up" title="Yes">+</button>
+          <button class="btn btn-feedback" data-rating="down" title="No">-</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- History Section -->
+    <section id="history-section" class="card hidden">
+      <h2 data-i18n="history_title">Analysis History</h2>
+      <div class="history-actions">
+        <button id="export-csv-btn" class="btn btn-secondary" data-i18n="export_csv">Export CSV</button>
+        <button id="export-pdf-btn" class="btn btn-secondary" data-i18n="export_pdf">Export PDF</button>
+      </div>
+      <div id="history-list" class="history-list"></div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p data-i18n="footer_text">Powered by Azure AI Foundry &amp; Azure Functions</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
