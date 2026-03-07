@@ -5,9 +5,40 @@ import logging
 
 import azure.functions as func
 from shared.ai_client import AzureAIClient
+from shared.prompts import get_prompt_config
 
 bp = func.Blueprint()
 logger = logging.getLogger(__name__)
+# ---------------------------------------------------------------------------
+# Fallback prompt constants (operational resilience if prompts.yaml fails)
+# Keep these in sync with prompts.yaml and function_app.py
+# ---------------------------------------------------------------------------
+
+_FALLBACK_SCAM_CLASSIFIER_PROMPT = (
+    "You are an expert anti-scam analyst. "
+    "Classify the following message as one of: SCAM, LIKELY_SCAM, SUSPICIOUS, or SAFE. "
+    "Reply ONLY with a JSON object matching this schema: "
+    '{"classification": "...", "confidence": 0.0, "reasoning": "..."}. '
+    "Do not include markdown fences."
+)
+
+_FALLBACK_MESSAGE_ANALYZER_PROMPT = (
+    "You are a cybersecurity expert specialising in social engineering and scam detection. "
+    "Analyse the provided message and return a JSON object with these keys: "
+    '"red_flags" (list of strings), "persuasion_techniques" (list of strings), '
+    '"impersonation_indicators" (list of strings), "summary" (string). '
+    "Do not include markdown fences."
+)
+
+_FALLBACK_GUIDANCE_GENERATOR_PROMPT = (
+    "You are a consumer protection advisor. "
+    "A user has received a potentially fraudulent message. "
+    "Provide practical safety guidance as a JSON object with keys: "
+    '"immediate_actions" (list), "reporting_steps" (list), '
+    '"prevention_tips" (list), "resources" (list of helpful URLs or organisations). '
+    "Do not include markdown fences."
+)
+
 
 
 # ---------------------------------------------------------------------------
@@ -42,13 +73,9 @@ def classify_scam(req: func.HttpRequest) -> func.HttpResponse:
     if not text:
         return _bad_request("'text' field is required and must not be empty.")
 
-    system_prompt = (
-        "You are an expert anti-scam analyst. "
-        "Classify the following message as one of: SCAM, LIKELY_SCAM, SUSPICIOUS, or SAFE. "
-        "Reply ONLY with a JSON object matching this schema: "
-        '{"classification": "...", "confidence": 0.0, "reasoning": "..."}. '
-        "Do not include markdown fences."
-    )
+    # Load prompt from centralized config with fallback
+    _config = get_prompt_config("scam_classifier")
+    system_prompt = _config.get("system_prompt", _FALLBACK_SCAM_CLASSIFIER_PROMPT)
 
     try:
         client = AzureAIClient()
@@ -85,13 +112,9 @@ def analyze_message(req: func.HttpRequest) -> func.HttpResponse:
     if not text:
         return _bad_request("'text' field is required and must not be empty.")
 
-    system_prompt = (
-        "You are a cybersecurity expert specialising in social engineering and scam detection. "
-        "Analyse the provided message and return a JSON object with these keys: "
-        '"red_flags" (list of strings), "persuasion_techniques" (list of strings), '
-        '"impersonation_indicators" (list of strings), "summary" (string). '
-        "Do not include markdown fences."
-    )
+    # Load prompt from centralized config with fallback
+    _config = get_prompt_config("message_analyzer")
+    system_prompt = _config.get("system_prompt", _FALLBACK_MESSAGE_ANALYZER_PROMPT)
 
     try:
         client = AzureAIClient()
@@ -138,14 +161,9 @@ def safety_guidance(req: func.HttpRequest) -> func.HttpResponse:
     if context:
         user_message += f"\n\nAdditional context: {context}"
 
-    system_prompt = (
-        "You are a consumer protection advisor. "
-        "A user has received a potentially fraudulent message. "
-        "Provide practical safety guidance as a JSON object with keys: "
-        '"immediate_actions" (list), "reporting_steps" (list), '
-        '"prevention_tips" (list), "resources" (list of helpful URLs or organisations). '
-        "Do not include markdown fences."
-    )
+    # Load prompt from centralized config with fallback
+    _config = get_prompt_config("guidance_generator")
+    system_prompt = _config.get("system_prompt", _FALLBACK_GUIDANCE_GENERATOR_PROMPT)
 
     try:
         client = AzureAIClient()
