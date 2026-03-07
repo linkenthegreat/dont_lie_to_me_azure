@@ -49,11 +49,17 @@ dont_lie_to_me_azure/
 │   │   ├── function_app.py
 │   │   ├── host.json
 │   │   ├── requirements.txt
+│   │   ├── prompts.yaml  # Centralized AI system prompts
 │   │   ├── local.settings.json.example
+│   │   ├── services/      # Business logic layer
+│   │   │   ├── scam_classifier.py
+│   │   │   ├── message_analyzer.py
+│   │   │   └── guidance_generator.py
 │   │   └── shared/        # Reusable helpers
 │   │       ├── ai_client.py
 │   │       ├── keyvault.py
-│   │       └── storage.py
+│   │       ├── prompts.py # Prompt loader with fallback
+│   │       └── config.py
 │   └── frontend/          # Static web UI
 │       ├── index.html
 │       ├── style.css
@@ -66,10 +72,76 @@ dont_lie_to_me_azure/
 │       └── storage.bicep
 ├── docs/                  # Documentation
 │   ├── architecture.md
+│   ├── architecture_v3.mmd # Mermaid diagram (v3 = prompt system)
 │   ├── setup.md
 │   └── CONTRIBUTING.md
 └── README.md
 ```
+
+
+## AI Prompt Management
+
+### Architecture (v3.0)
+
+System prompts for AI agents are centralized in `src/backend/prompts.yaml`.
+This approach allows prompt engineers to iterate without modifying code.
+
+**Fallback Strategy:**
+- Each service module contains an embedded `_FALLBACK_SYSTEM_PROMPT` constant
+- If `prompts.yaml` is missing or invalid, services automatically use the fallback
+- This ensures the system remains operational even if external config fails
+
+### Editing Prompts
+
+**To modify AI behavior:**
+1. Edit `src/backend/prompts.yaml`
+2. Change the `system_prompt` text for the relevant service
+3. Optionally adjust `model`, `temperature`, or `max_tokens`
+4. Test locally (no code changes required)
+5. Commit the YAML file
+
+**Example:**
+```yaml
+scam_classifier:
+   system_prompt: |
+      You are an expert anti-scam analyst...
+   model: gpt-4o-mini
+   temperature: 0.2
+   max_tokens: 500
+```
+
+### Fallback Constants (for developers)
+
+**When changing service logic:**
+- Keep the embedded `_FALLBACK_SYSTEM_PROMPT` in sync with `prompts.yaml`
+- This ensures consistent behavior if YAML fails to load
+- The fallback is **not** the primary prompt – it's a safety net
+
+**Code pattern:**
+```python
+from shared.prompts import get_prompt_config
+
+# Embedded fallback - operational resilience if YAML fails
+_FALLBACK_SYSTEM_PROMPT = "Your prompt here..."
+
+# Load from YAML with fallback to embedded constant
+_config = get_prompt_config("service_key")
+_SYSTEM_PROMPT = _config.get("system_prompt", _FALLBACK_SYSTEM_PROMPT)
+```
+
+**When to update fallback:**
+- Always update both YAML and fallback in the same commit
+- Fallback should match the production YAML prompt
+- Think of it as: YAML = source of truth, fallback = disaster recovery
+
+### Dependencies
+
+The prompt loader requires PyYAML:
+```bash
+pip install pyyaml
+```
+
+If PyYAML is not installed, services automatically fall back to embedded prompts.
 
 ---
 
