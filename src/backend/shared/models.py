@@ -1,16 +1,27 @@
 """
+<<<<<<< HEAD
 Pydantic data models for URL checking and agent runtime features.
+=======
+Pydantic data models for URL checking feature.
+>>>>>>> origin/main
 
 Provides structured, validated data models for:
 - Individual threat intelligence source results
 - Risk hint analysis results
 - Final aggregated URL check results
 - API request/response contracts
+<<<<<<< HEAD
 - Agent orchestration contracts
 """
 
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+=======
+"""
+
+from datetime import datetime
+from typing import Dict, List, Optional
+>>>>>>> origin/main
 from enum import Enum
 from pydantic import BaseModel, Field, field_validator
 
@@ -335,6 +346,7 @@ class CheckURLResponse(BaseModel):
                 "error_code": None,
             }
         }
+<<<<<<< HEAD
 
 
 # ---------------------------------------------------------------------------
@@ -457,3 +469,5 @@ class AgentResponse(BaseModel):
         description="Final output payload.",
     )
     trace: OrchestrationTrace = Field(..., description="Orchestration trace metadata.")
+=======
+>>>>>>> origin/main

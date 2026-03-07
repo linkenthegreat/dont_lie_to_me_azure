@@ -21,11 +21,14 @@
   },
   "http": {
     "routePrefix": "api"
+<<<<<<< HEAD
   },
   "cors": {
     "allowedOrigins": [
       "*"
     ],
     "supportCredentials": false
+=======
+>>>>>>> origin/main
   }
 }

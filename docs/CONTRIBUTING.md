@@ -49,6 +49,7 @@ dont_lie_to_me_azure/
 │   │   ├── function_app.py
 │   │   ├── host.json
 │   │   ├── requirements.txt
+<<<<<<< HEAD
 │   │   ├── prompts.yaml  # Centralized AI system prompts
 │   │   ├── local.settings.json.example
 │   │   ├── services/      # Business logic layer
@@ -60,6 +61,13 @@ dont_lie_to_me_azure/
 │   │       ├── keyvault.py
 │   │       ├── prompts.py # Prompt loader with fallback
 │   │       └── config.py
+=======
+│   │   ├── local.settings.json.example
+│   │   └── shared/        # Reusable helpers
+│   │       ├── ai_client.py
+│   │       ├── keyvault.py
+│   │       └── storage.py
+>>>>>>> origin/main
 │   └── frontend/          # Static web UI
 │       ├── index.html
 │       ├── style.css
@@ -72,12 +80,16 @@ dont_lie_to_me_azure/
 │       └── storage.bicep
 ├── docs/                  # Documentation
 │   ├── architecture.md
+<<<<<<< HEAD
 │   ├── architecture_v3.mmd # Mermaid diagram (v3 = prompt system)
+=======
+>>>>>>> origin/main
 │   ├── setup.md
 │   └── CONTRIBUTING.md
 └── README.md
 ```
 
+<<<<<<< HEAD
 
 ## AI Prompt Management
 
@@ -143,6 +155,8 @@ pip install pyyaml
 
 If PyYAML is not installed, services automatically fall back to embedded prompts.
 
+=======
+>>>>>>> origin/main
 ---
 
 ## Code style

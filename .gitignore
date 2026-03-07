@@ -35,3 +35,9 @@ Thumbs.db
 
 # Logs
 *.log
+<<<<<<< HEAD
+=======
+
+# Claude Code
+.claude/
+>>>>>>> origin/main
