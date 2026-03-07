@@ -1,6 +1,7 @@
 """
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 Shared AI client with provider abstraction.
 
 Supports Azure AI Foundry, GitHub Models, and mock providers.
@@ -12,10 +13,15 @@ Shared Azure AI Foundry client.
 Shared Azure AI Foundry client.
 
 >>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
+=======
+Shared Azure AI Foundry client.
+
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 Reads configuration from environment variables (populated from local.settings.json
 locally, or from Application Settings / Key Vault references in Azure).
 """
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 import logging
@@ -32,6 +38,11 @@ import os
 import logging
 from openai import AzureOpenAI
 >>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
+=======
+import os
+import logging
+from openai import AzureOpenAI
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +50,7 @@ _DEFAULT_MAX_TOKENS = 1024
 _DEFAULT_TEMPERATURE = 0.2
 
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 class MockAIClient:
@@ -59,6 +71,8 @@ class MockAIClient:
 
 =======
 >>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 class AzureAIClient:
     """
     Thin wrapper around the Azure OpenAI SDK for Azure AI Foundry deployments.
@@ -97,6 +111,7 @@ class AzureAIClient:
             token_provider = get_bearer_token_provider(
                 credential, "https://cognitiveservices.azure.com/.default"
             )
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 class AzureAIClient:
@@ -139,6 +154,8 @@ class AzureAIClient:
             )
 =======
 >>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
             self._client = AzureOpenAI(
                 azure_endpoint=endpoint,
                 azure_ad_token_provider=token_provider,
@@ -147,7 +164,10 @@ class AzureAIClient:
 
         logger.info("AzureAIClient initialised with deployment '%s'", self._deployment)
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 =======
 >>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 
@@ -179,6 +199,7 @@ class AzureAIClient:
         """
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         if self._provider == "mock":
             # Mock provider uses simplified interface
             response = self._client.chat_completions_create(
@@ -204,6 +225,8 @@ class AzureAIClient:
 =======
 =======
 >>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
         response = self._client.chat.completions.create(
             model=self._deployment,
             messages=[
@@ -214,7 +237,10 @@ class AzureAIClient:
             temperature=temperature,
         )
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 =======
 >>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
         return response.choices[0].message.content

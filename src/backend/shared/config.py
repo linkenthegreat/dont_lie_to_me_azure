@@ -9,11 +9,14 @@ def get(name: str, default: str = "") -> str:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 # AI Provider Selection
 AI_PROVIDER = lambda: get("AI_PROVIDER", "azure")  # azure | github | mock
 
 =======
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 =======
 >>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 # Azure AI
@@ -24,6 +27,7 @@ AZURE_AI_DEPLOYMENT_NAME = lambda: get("AZURE_AI_DEPLOYMENT_NAME", "gpt-4o")
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 # GitHub Models
 GITHUB_TOKEN = lambda: get("GITHUB_TOKEN")
 GITHUB_MODEL = lambda: get("GITHUB_MODEL", "gpt-4o-mini")
@@ -31,6 +35,8 @@ GITHUB_MODELS_ENDPOINT = lambda: get("GITHUB_MODELS_ENDPOINT", "https://models.g
 
 =======
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 =======
 >>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 # Cosmos DB

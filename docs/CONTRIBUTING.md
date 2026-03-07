@@ -51,13 +51,17 @@ dont_lie_to_me_azure/
 │   │   ├── requirements.txt
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 │   │   ├── prompts.yaml  # Centralized AI system prompts
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 =======
 >>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 │   │   ├── local.settings.json.example
 │   │   └── shared/        # Reusable helpers
 │   │       ├── ai_client.py
 │   │       ├── keyvault.py
+<<<<<<< HEAD
 <<<<<<< HEAD
 │   │       ├── prompts.py # Prompt loader with fallback
 │   │       └── config.py
@@ -68,6 +72,9 @@ dont_lie_to_me_azure/
 │   │       ├── keyvault.py
 │   │       └── storage.py
 >>>>>>> origin/main
+=======
+│   │       └── storage.py
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 =======
 │   │       └── storage.py
 >>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
@@ -85,9 +92,12 @@ dont_lie_to_me_azure/
 │   ├── architecture.md
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 │   ├── architecture_v3.mmd # Mermaid diagram (v3 = prompt system)
 =======
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 =======
 >>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 │   ├── setup.md
@@ -95,6 +105,7 @@ dont_lie_to_me_azure/
 └── README.md
 ```
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 
@@ -164,6 +175,8 @@ If PyYAML is not installed, services automatically fall back to embedded prompts
 
 =======
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 =======
 >>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 ---
