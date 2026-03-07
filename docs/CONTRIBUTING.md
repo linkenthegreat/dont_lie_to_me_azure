@@ -50,15 +50,15 @@ dont_lie_to_me_azure/
 │   │   ├── host.json
 │   │   ├── requirements.txt
 <<<<<<< HEAD
+<<<<<<< HEAD
 │   │   ├── prompts.yaml  # Centralized AI system prompts
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 │   │   ├── local.settings.json.example
-│   │   ├── services/      # Business logic layer
-│   │   │   ├── scam_classifier.py
-│   │   │   ├── message_analyzer.py
-│   │   │   └── guidance_generator.py
 │   │   └── shared/        # Reusable helpers
 │   │       ├── ai_client.py
 │   │       ├── keyvault.py
+<<<<<<< HEAD
 │   │       ├── prompts.py # Prompt loader with fallback
 │   │       └── config.py
 =======
@@ -68,6 +68,9 @@ dont_lie_to_me_azure/
 │   │       ├── keyvault.py
 │   │       └── storage.py
 >>>>>>> origin/main
+=======
+│   │       └── storage.py
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 │   └── frontend/          # Static web UI
 │       ├── index.html
 │       ├── style.css
@@ -81,14 +84,18 @@ dont_lie_to_me_azure/
 ├── docs/                  # Documentation
 │   ├── architecture.md
 <<<<<<< HEAD
+<<<<<<< HEAD
 │   ├── architecture_v3.mmd # Mermaid diagram (v3 = prompt system)
 =======
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 │   ├── setup.md
 │   └── CONTRIBUTING.md
 └── README.md
 ```
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 
 ## AI Prompt Management
@@ -157,6 +164,8 @@ If PyYAML is not installed, services automatically fall back to embedded prompts
 
 =======
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 ---
 
 ## Code style

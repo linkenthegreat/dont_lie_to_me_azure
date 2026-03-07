@@ -3,8 +3,9 @@
 Dont Lie To Me – Azure
 Azure Functions v2 (Python) entry point.
 
-HTTP endpoints use shared service layer.
+HTTP endpoints are served via Blueprint.
 MCP tools are registered directly on the FunctionApp.
+<<<<<<< HEAD
 CORS is enabled for local development and cross-origin requests.
 =======
 Dont Lie To Me -- Azure
@@ -19,9 +20,15 @@ import json
 import logging
 <<<<<<< HEAD
 
+=======
+"""
+
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 import azure.functions as func
+from shared.ai_client import AzureAIClient
 from shared.url_checker import URLChecker
 from shared.models import CheckURLRequest, CheckURLResponse
+<<<<<<< HEAD
 from shared.cors import add_cors_headers
 from services import scam_classifier, message_analyzer, guidance_generator
 =======
@@ -34,6 +41,8 @@ from shared.ai_client import AzureAIClient
 from shared.url_checker import URLChecker
 from shared.models import CheckURLRequest, CheckURLResponse
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
@@ -144,22 +153,19 @@ def _track_request(endpoint: str, start_time: float, status: str, cached: bool =
 # ---------------------------------------------------------------------------
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 @app.route(route="health", methods=["GET", "OPTIONS"], auth_level=func.AuthLevel.ANONYMOUS)
+=======
+@app.route(route="health", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 def health(req: func.HttpRequest) -> func.HttpResponse:
     """Simple liveness probe – no auth required."""
-    if req.method == "OPTIONS":
-        return func.HttpResponse("", status_code=200, headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            "Access-Control-Max-Age": "3600"
-        })
-    
-    response = func.HttpResponse(
+    return func.HttpResponse(
         json.dumps({"status": "ok", "service": "dont-lie-to-me-azure"}),
         status_code=200,
         mimetype="application/json",
     )
+<<<<<<< HEAD
     return add_cors_headers(response)
 =======
 
@@ -184,6 +190,8 @@ def health(req: func.HttpRequest) -> func.HttpResponse:
         mimetype="application/json",
     )
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +199,11 @@ def health(req: func.HttpRequest) -> func.HttpResponse:
 # ---------------------------------------------------------------------------
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 @app.route(route="check-url", methods=["POST", "OPTIONS"])
+=======
+@app.route(route="check-url", methods=["POST"])
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 def check_url(req: func.HttpRequest) -> func.HttpResponse:
     """
     Check if a URL is flagged as a threat by threat intelligence sources.
@@ -253,12 +265,15 @@ def check_url(req: func.HttpRequest) -> func.HttpResponse:
             error_code="INVALID_JSON",
         )
 <<<<<<< HEAD
+<<<<<<< HEAD
         http_response = func.HttpResponse(
+=======
+        return func.HttpResponse(
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
             response.model_dump_json(),
             status_code=400,
             mimetype="application/json",
         )
-        return add_cors_headers(http_response)
 
     # Validate request
 =======
@@ -276,12 +291,15 @@ def check_url(req: func.HttpRequest) -> func.HttpResponse:
             error_code="INVALID_REQUEST",
         )
 <<<<<<< HEAD
+<<<<<<< HEAD
         http_response = func.HttpResponse(
+=======
+        return func.HttpResponse(
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
             response.model_dump_json(),
             status_code=400,
             mimetype="application/json",
         )
-        return add_cors_headers(http_response)
 
     # Get URL checker
 =======
@@ -316,12 +334,11 @@ def check_url(req: func.HttpRequest) -> func.HttpResponse:
             error=None,
             error_code=None,
         )
-        http_response = func.HttpResponse(
+        return func.HttpResponse(
             response.model_dump_json(),
             status_code=200,
             mimetype="application/json",
         )
-        return add_cors_headers(http_response)
 
     except Exception as exc:
         logger.exception("URL check failed for URL: %s", request_data.url)
@@ -350,17 +367,20 @@ def check_url(req: func.HttpRequest) -> func.HttpResponse:
             error_code="CHECK_FAILED",
         )
 <<<<<<< HEAD
+<<<<<<< HEAD
         http_response = func.HttpResponse(
+=======
+        return func.HttpResponse(
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
             response.model_dump_json(),
             status_code=500,
             mimetype="application/json",
         )
-        return add_cors_headers(http_response)
 
 
 
 
-@app.route(route="classify", methods=["POST", "OPTIONS"])
+@app.route(route="classify", methods=["POST"])
 def classify_scam(req: func.HttpRequest) -> func.HttpResponse:
     """
     Classify whether the supplied text / message is a scam.
@@ -377,6 +397,7 @@ def classify_scam(req: func.HttpRequest) -> func.HttpResponse:
             "reasoning": "<brief explanation>"
         }
     """
+<<<<<<< HEAD
     if req.method == "OPTIONS":
         return func.HttpResponse("", status_code=200, headers={
             "Access-Control-Allow-Origin": "*",
@@ -401,6 +422,8 @@ def classify_scam(req: func.HttpRequest) -> func.HttpResponse:
     """Classify whether the supplied text / message is a scam."""
     start_time = time.time()
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
     try:
         body = req.get_json()
     except ValueError:
@@ -411,17 +434,34 @@ def classify_scam(req: func.HttpRequest) -> func.HttpResponse:
         return _bad_request("'text' field is required and must not be empty.")
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+    system_prompt = (
+        "You are an expert anti-scam analyst. "
+        "Classify the following message as one of: SCAM, LIKELY_SCAM, SUSPICIOUS, or SAFE. "
+        "Reply ONLY with a JSON object matching this schema: "
+        '{"classification": "...", "confidence": 0.0, "reasoning": "..."}. '
+        "Do not include markdown fences."
+    )
+
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
     try:
-        result = scam_classifier.classify_scam(text)
+        client = AzureAIClient()
+        raw = client.chat(system_prompt=system_prompt, user_message=text)
+        result = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("Model returned non-JSON output: %s", raw)
+        result = {"classification": "UNKNOWN", "confidence": 0.0, "reasoning": raw}
     except Exception as exc:
         logger.exception("Classification failed")
         return _internal_error(str(exc))
 
-    response = func.HttpResponse(
+    return func.HttpResponse(
         json.dumps(result),
         status_code=200,
         mimetype="application/json",
     )
+<<<<<<< HEAD
     return add_cors_headers(response)
 =======
     session_id = body.get("session_id", "")
@@ -491,6 +531,8 @@ def classify_scam(req: func.HttpRequest) -> func.HttpResponse:
         json.dumps(result), status_code=200, mimetype="application/json"
     )
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 
 
 # ---------------------------------------------------------------------------
@@ -498,7 +540,11 @@ def classify_scam(req: func.HttpRequest) -> func.HttpResponse:
 # ---------------------------------------------------------------------------
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 @app.route(route="analyze", methods=["POST", "OPTIONS"])
+=======
+@app.route(route="analyze", methods=["POST"])
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 def analyze_message(req: func.HttpRequest) -> func.HttpResponse:
     """
     Perform a detailed analysis of the supplied text, highlighting red flags,
@@ -517,6 +563,7 @@ def analyze_message(req: func.HttpRequest) -> func.HttpResponse:
             "summary": "..."
         }
     """
+<<<<<<< HEAD
     if req.method == "OPTIONS":
         return func.HttpResponse("", status_code=200, headers={
             "Access-Control-Allow-Origin": "*",
@@ -532,6 +579,8 @@ def analyze_message(req: func.HttpRequest) -> func.HttpResponse:
     """Perform a detailed analysis of the supplied text."""
     start_time = time.time()
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
     try:
         body = req.get_json()
     except ValueError:
@@ -542,17 +591,39 @@ def analyze_message(req: func.HttpRequest) -> func.HttpResponse:
         return _bad_request("'text' field is required and must not be empty.")
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+    system_prompt = (
+        "You are a cybersecurity expert specialising in social engineering and scam detection. "
+        "Analyse the provided message and return a JSON object with these keys: "
+        '"red_flags" (list of strings), "persuasion_techniques" (list of strings), '
+        '"impersonation_indicators" (list of strings), "summary" (string). '
+        "Do not include markdown fences."
+    )
+
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
     try:
-        result = message_analyzer.analyze_message(text)
+        client = AzureAIClient()
+        raw = client.chat(system_prompt=system_prompt, user_message=text)
+        result = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("Model returned non-JSON output: %s", raw)
+        result = {
+            "red_flags": [],
+            "persuasion_techniques": [],
+            "impersonation_indicators": [],
+            "summary": raw,
+        }
     except Exception as exc:
         logger.exception("Analysis failed")
         return _internal_error(str(exc))
 
-    response = func.HttpResponse(
+    return func.HttpResponse(
         json.dumps(result),
         status_code=200,
         mimetype="application/json",
     )
+<<<<<<< HEAD
     return add_cors_headers(response)
 =======
     session_id = body.get("session_id", "")
@@ -599,6 +670,8 @@ def analyze_message(req: func.HttpRequest) -> func.HttpResponse:
         json.dumps(result), status_code=200, mimetype="application/json"
     )
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 
 
 # ---------------------------------------------------------------------------
@@ -606,7 +679,11 @@ def analyze_message(req: func.HttpRequest) -> func.HttpResponse:
 # ---------------------------------------------------------------------------
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 @app.route(route="guidance", methods=["POST", "OPTIONS"])
+=======
+@app.route(route="guidance", methods=["POST"])
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 def safety_guidance(req: func.HttpRequest) -> func.HttpResponse:
     """
     Generate step-by-step safety guidance for a user who has received a
@@ -626,6 +703,7 @@ def safety_guidance(req: func.HttpRequest) -> func.HttpResponse:
             "resources": ["..."]
         }
     """
+<<<<<<< HEAD
     if req.method == "OPTIONS":
         return func.HttpResponse("", status_code=200, headers={
             "Access-Control-Allow-Origin": "*",
@@ -641,6 +719,8 @@ def safety_guidance(req: func.HttpRequest) -> func.HttpResponse:
     """Generate step-by-step safety guidance for a suspicious message."""
     start_time = time.time()
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
     try:
         body = req.get_json()
     except ValueError:
@@ -652,18 +732,42 @@ def safety_guidance(req: func.HttpRequest) -> func.HttpResponse:
 
 <<<<<<< HEAD
     context = body.get("context", "").strip()
+    user_message = f"Message: {text}"
+    if context:
+        user_message += f"\n\nAdditional context: {context}"
+
+    system_prompt = (
+        "You are a consumer protection advisor. "
+        "A user has received a potentially fraudulent message. "
+        "Provide practical safety guidance as a JSON object with keys: "
+        '"immediate_actions" (list), "reporting_steps" (list), '
+        '"prevention_tips" (list), "resources" (list of helpful URLs or organisations). '
+        "Do not include markdown fences."
+    )
 
     try:
-        result = guidance_generator.generate_guidance(text, context)
+        client = AzureAIClient()
+        raw = client.chat(system_prompt=system_prompt, user_message=user_message)
+        result = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("Model returned non-JSON output: %s", raw)
+        result = {
+            "immediate_actions": [],
+            "reporting_steps": [],
+            "prevention_tips": [],
+            "resources": [],
+            "note": raw,
+        }
     except Exception as exc:
         logger.exception("Guidance generation failed")
         return _internal_error(str(exc))
 
-    response = func.HttpResponse(
+    return func.HttpResponse(
         json.dumps(result),
         status_code=200,
         mimetype="application/json",
     )
+<<<<<<< HEAD
     return add_cors_headers(response)
 =======
     session_id = body.get("session_id", "")
@@ -1021,6 +1125,8 @@ def cleanup_expired_data(timer: func.TimerRequest) -> None:
     except Exception as exc:
         logger.warning("Scheduled cleanup encountered an error: %s", exc)
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 
 
 # ---------------------------------------------------------------------------
@@ -1029,16 +1135,21 @@ def cleanup_expired_data(timer: func.TimerRequest) -> None:
 
 <<<<<<< HEAD
 def _bad_request(message: str) -> func.HttpResponse:
+<<<<<<< HEAD
     response = func.HttpResponse(
 =======
 
 def _bad_request(message: str) -> func.HttpResponse:
     return func.HttpResponse(
 >>>>>>> origin/main
+=======
+    return func.HttpResponse(
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
         json.dumps({"error": message}),
         status_code=400,
         mimetype="application/json",
     )
+<<<<<<< HEAD
 <<<<<<< HEAD
     return add_cors_headers(response)
 
@@ -1051,11 +1162,20 @@ def _internal_error(message: str) -> func.HttpResponse:
 def _internal_error(message: str) -> func.HttpResponse:
     return func.HttpResponse(
 >>>>>>> origin/main
+=======
+
+
+def _internal_error(message: str) -> func.HttpResponse:
+    return func.HttpResponse(
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
         json.dumps({"error": "Internal server error.", "detail": message}),
         status_code=500,
         mimetype="application/json",
     )
 <<<<<<< HEAD
+<<<<<<< HEAD
     return add_cors_headers(response)
 =======
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)

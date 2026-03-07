@@ -1,5 +1,6 @@
 """
 <<<<<<< HEAD
+<<<<<<< HEAD
 Shared AI client with provider abstraction.
 
 Supports Azure AI Foundry, GitHub Models, and mock providers.
@@ -7,10 +8,15 @@ Supports Azure AI Foundry, GitHub Models, and mock providers.
 Shared Azure AI Foundry client.
 
 >>>>>>> origin/main
+=======
+Shared Azure AI Foundry client.
+
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 Reads configuration from environment variables (populated from local.settings.json
 locally, or from Application Settings / Key Vault references in Azure).
 """
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 import logging
 from typing import Optional
@@ -21,6 +27,11 @@ import os
 import logging
 from openai import AzureOpenAI
 >>>>>>> origin/main
+=======
+import os
+import logging
+from openai import AzureOpenAI
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +39,7 @@ _DEFAULT_MAX_TOKENS = 1024
 _DEFAULT_TEMPERATURE = 0.2
 
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 class MockAIClient:
     """Mock AI client for testing without live API calls."""
@@ -45,96 +57,47 @@ class MockAIClient:
         return MockResponse()
 
 
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 class AzureAIClient:
     """
-    Multi-provider AI client supporting Azure AI Foundry, GitHub Models, and mock.
+    Thin wrapper around the Azure OpenAI SDK for Azure AI Foundry deployments.
 
-    Provider selection via AI_PROVIDER environment variable:
-        - "azure"  : Azure AI Foundry (production)
-        - "github" : GitHub Models (local development)
-        - "mock"   : Mock responses (testing)
+    Supported models: GPT-4o, GPT-4o mini, Phi-3 (deployed via Azure AI Foundry).
 
-    Azure Configuration:
+    Configuration (environment variables):
         AZURE_AI_ENDPOINT          – e.g. https://<name>.openai.azure.com/
         AZURE_AI_DEPLOYMENT_NAME   – deployment name, e.g. "gpt-4o"
         AZURE_AI_API_VERSION       – API version, e.g. "2024-02-01"
-        AZURE_AI_API_KEY           – API key (or use managed identity)
-
-    GitHub Models Configuration:
-        GITHUB_TOKEN               – GitHub personal access token
-        GITHUB_MODEL               – Model ID, e.g. "gpt-4o-mini"
-        GITHUB_MODELS_ENDPOINT     – Endpoint URL (default: https://models.github.ai/inference)
+        AZURE_AI_API_KEY           – API key  (or use managed identity)
     """
 
-    def __init__(self, provider: Optional[str] = None) -> None:
-        """
-        Initialize AI client with specified provider.
+    def __init__(self) -> None:
+        endpoint = os.environ.get("AZURE_AI_ENDPOINT", "")
+        api_key = os.environ.get("AZURE_AI_API_KEY", "")
+        api_version = os.environ.get("AZURE_AI_API_VERSION", "2024-02-01")
+        self._deployment = os.environ.get("AZURE_AI_DEPLOYMENT_NAME", "gpt-4o")
 
-        Parameters
-        ----------
-        provider : str, optional
-            Override AI_PROVIDER environment variable. One of: azure, github, mock.
-            If None, reads from AI_PROVIDER env var (defaults to "azure").
-        """
-        self._provider = provider or config.AI_PROVIDER()
-        self._client = None
-        self._deployment = None
-
-        if self._provider == "mock":
-            self._client = MockAIClient()
-            self._deployment = "mock-model"
-            logger.info("AzureAIClient initialized with mock provider")
-
-        elif self._provider == "github":
-            token = config.GITHUB_TOKEN()
-            if not token:
-                raise EnvironmentError(
-                    "GITHUB_TOKEN environment variable is required for github provider"
-                )
-            self._deployment = config.GITHUB_MODEL()
-            endpoint = config.GITHUB_MODELS_ENDPOINT()
-            self._client = OpenAI(
-                base_url=endpoint,
-                api_key=token,
+        if not endpoint:
+            raise EnvironmentError(
+                "AZURE_AI_ENDPOINT environment variable is not set."
             )
-            logger.info("AzureAIClient initialized with GitHub Models provider (model: %s)", self._deployment)
 
-        elif self._provider == "azure":
-            endpoint = config.AZURE_AI_ENDPOINT()
-            api_key = config.AZURE_AI_API_KEY()
-            api_version = config.AZURE_AI_API_VERSION()
-            self._deployment = config.AZURE_AI_DEPLOYMENT_NAME()
-
-            if not endpoint:
-                raise EnvironmentError(
-                    "AZURE_AI_ENDPOINT environment variable is not set."
-                )
-
-            if api_key:
-                self._client = AzureOpenAI(
-                    azure_endpoint=endpoint,
-                    api_key=api_key,
-                    api_version=api_version,
-                )
-            else:
-                # Fallback to DefaultAzureCredential (managed identity / Azure CLI)
-                from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-
-                credential = DefaultAzureCredential()
-                token_provider = get_bearer_token_provider(
-                    credential, "https://cognitiveservices.azure.com/.default"
-                )
-                self._client = AzureOpenAI(
-                    azure_endpoint=endpoint,
-                    azure_ad_token_provider=token_provider,
-                    api_version=api_version,
-                )
-            logger.info("AzureAIClient initialized with Azure AI Foundry provider (deployment: %s)", self._deployment)
-
+        if api_key:
+            self._client = AzureOpenAI(
+                azure_endpoint=endpoint,
+                api_key=api_key,
+                api_version=api_version,
+            )
         else:
-            raise ValueError(
-                f"Unsupported AI_PROVIDER: {self._provider}. Must be one of: azure, github, mock"
+            # Fallback to DefaultAzureCredential (managed identity / Azure CLI)
+            from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+
+            credential = DefaultAzureCredential()
+            token_provider = get_bearer_token_provider(
+                credential, "https://cognitiveservices.azure.com/.default"
             )
+<<<<<<< HEAD
 =======
 class AzureAIClient:
     """
@@ -174,6 +137,8 @@ class AzureAIClient:
             token_provider = get_bearer_token_provider(
                 credential, "https://cognitiveservices.azure.com/.default"
             )
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
             self._client = AzureOpenAI(
                 azure_endpoint=endpoint,
                 azure_ad_token_provider=token_provider,
@@ -181,7 +146,10 @@ class AzureAIClient:
             )
 
         logger.info("AzureAIClient initialised with deployment '%s'", self._deployment)
+<<<<<<< HEAD
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
 
     def chat(
         self,
@@ -210,6 +178,7 @@ class AzureAIClient:
             The content of the first choice returned by the model.
         """
 <<<<<<< HEAD
+<<<<<<< HEAD
         if self._provider == "mock":
             # Mock provider uses simplified interface
             response = self._client.chat_completions_create(
@@ -233,6 +202,8 @@ class AzureAIClient:
                 temperature=temperature,
             )
 =======
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
         response = self._client.chat.completions.create(
             model=self._deployment,
             messages=[
@@ -242,5 +213,8 @@ class AzureAIClient:
             max_tokens=max_tokens,
             temperature=temperature,
         )
+<<<<<<< HEAD
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
         return response.choices[0].message.content

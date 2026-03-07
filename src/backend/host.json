@@ -22,6 +22,7 @@
   "http": {
     "routePrefix": "api"
 <<<<<<< HEAD
+<<<<<<< HEAD
   },
   "cors": {
     "allowedOrigins": [
@@ -30,5 +31,7 @@
     "supportCredentials": false
 =======
 >>>>>>> origin/main
+=======
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
   }
 }

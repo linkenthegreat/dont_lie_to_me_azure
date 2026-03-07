@@ -4,6 +4,7 @@
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "python",
     "PYTHON_ISOLATE_WORKER_DEPENDENCIES": "1",
+<<<<<<< HEAD
 
 <<<<<<< HEAD
     "_comment_provider": "AI_PROVIDER options: azure (production) | github (local dev) | mock (testing)",
@@ -23,7 +24,13 @@
     "GITHUB_MODEL": "gpt-4o-mini",
     "GITHUB_MODELS_ENDPOINT": "https://models.github.ai/inference",
 
+=======
+    "AZURE_AI_ENDPOINT": "https://<your-ai-foundry-endpoint>.openai.azure.com/",
+    "AZURE_AI_DEPLOYMENT_NAME": "gpt-4o",
+    "AZURE_AI_API_VERSION": "2024-02-01",
+>>>>>>> parent of 666ce7a (AI agent UI not refined and online search function not adding yet, branch phase E)
     "AZURE_KEYVAULT_URL": "https://<your-keyvault-name>.vault.azure.net/",
+    "AZURE_AI_API_KEY": "<your-api-key-or-use-managed-identity>",
     "STORAGE_ACCOUNT_CONNECTION_STRING": "DefaultEndpointsProtocol=https;AccountName=<your-account>;AccountKey=<your-key>;EndpointSuffix=core.windows.net",
 =======
 >>>>>>> origin/main
