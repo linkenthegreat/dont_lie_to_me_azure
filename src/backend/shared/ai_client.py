@@ -7,7 +7,8 @@ locally, or from Application Settings / Key Vault references in Azure).
 
 import os
 import logging
-from openai import AzureOpenAI
+import json
+from openai import AzureOpenAI, OpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -29,15 +30,37 @@ class AzureAIClient:
     """
 
     def __init__(self) -> None:
+        self._provider = os.environ.get("AI_PROVIDER", "azure").strip().lower()
+        self._model = ""
+
+        if self._provider == "github":
+            token = os.environ.get("GITHUB_TOKEN", "")
+            endpoint = os.environ.get(
+                "GITHUB_MODELS_ENDPOINT", "https://models.github.ai/inference"
+            )
+            self._model = os.environ.get("GITHUB_MODEL", "openai/gpt-4o-mini")
+
+            if not token:
+                raise EnvironmentError(
+                    "GITHUB_TOKEN environment variable is not set for AI_PROVIDER=github."
+                )
+
+            self._client = OpenAI(base_url=endpoint, api_key=token)
+            logger.info("AzureAIClient initialised with provider='github', model='%s'", self._model)
+            return
+
+        if self._provider == "mock":
+            self._client = None
+            logger.info("AzureAIClient initialised with provider='mock'")
+            return
+
         endpoint = os.environ.get("AZURE_AI_ENDPOINT", "")
         api_key = os.environ.get("AZURE_AI_API_KEY", "")
         api_version = os.environ.get("AZURE_AI_API_VERSION", "2024-02-01")
-        self._deployment = os.environ.get("AZURE_AI_DEPLOYMENT_NAME", "gpt-4o")
+        self._model = os.environ.get("AZURE_AI_DEPLOYMENT_NAME", "gpt-4o")
 
         if not endpoint:
-            raise EnvironmentError(
-                "AZURE_AI_ENDPOINT environment variable is not set."
-            )
+            raise EnvironmentError("AZURE_AI_ENDPOINT environment variable is not set.")
 
         if api_key:
             self._client = AzureOpenAI(
@@ -59,7 +82,7 @@ class AzureAIClient:
                 api_version=api_version,
             )
 
-        logger.info("AzureAIClient initialised with deployment '%s'", self._deployment)
+        logger.info("AzureAIClient initialised with provider='azure', deployment='%s'", self._model)
 
     def chat(
         self,
@@ -87,8 +110,11 @@ class AzureAIClient:
         str
             The content of the first choice returned by the model.
         """
+        if self._provider == "mock":
+            return self._mock_response(system_prompt)
+
         response = self._client.chat.completions.create(
-            model=self._deployment,
+            model=self._model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message},
@@ -97,3 +123,31 @@ class AzureAIClient:
             temperature=temperature,
         )
         return response.choices[0].message.content
+
+    def _mock_response(self, system_prompt: str) -> str:
+        prompt = system_prompt.lower()
+        if "red_flags" in prompt and "persuasion_techniques" in prompt:
+            return json.dumps(
+                {
+                    "red_flags": ["Urgency language"],
+                    "persuasion_techniques": ["Fear appeal"],
+                    "impersonation_indicators": ["Generic institutional tone"],
+                    "summary": "Mock analysis result.",
+                }
+            )
+        if "immediate_actions" in prompt and "reporting_steps" in prompt:
+            return json.dumps(
+                {
+                    "immediate_actions": ["Do not click any links"],
+                    "reporting_steps": ["Report to local fraud authority"],
+                    "prevention_tips": ["Verify sender identity through official channels"],
+                    "resources": ["https://www.actionfraud.police.uk/"],
+                }
+            )
+        return json.dumps(
+            {
+                "classification": "SUSPICIOUS",
+                "confidence": 0.5,
+                "reasoning": "Mock provider response.",
+            }
+        )
