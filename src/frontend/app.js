@@ -1,41 +1,13 @@
 /**
-<<<<<<< HEAD
- * Don't Lie To Me – Frontend JavaScript
- *
- * Handles tab switching, file upload (drag & drop + click), and API calls
- * to the Azure Functions backend.
- *
- * API base URL is resolved automatically:
- *   - In production: same origin (/api/...)
- *   - In local dev:  set window.API_BASE_URL before loading this script,
- *                    or rely on the default http://localhost:7071/api
-=======
  * Don't Lie To Me -- Frontend JavaScript
  *
  * Handles tab switching, file upload, API calls, i18n, session management,
  * history, export, and feedback.
->>>>>>> origin/main
  */
 
 (function () {
   'use strict';
 
-<<<<<<< HEAD
-  // ── Configuration ─────────────────────────────────────────────────────
-  const API_BASE = window.API_BASE_URL || 'http://localhost:7071/api';
-
-  // ── DOM References ────────────────────────────────────────────────────
-  const tabs          = document.querySelectorAll('.tab');
-  const tabPanels     = document.querySelectorAll('.tab-panel');
-  const analyzeBtn    = document.getElementById('analyze-btn');
-  const messageInput  = document.getElementById('message-input');
-  const imageInput    = document.getElementById('image-input');
-  const dropZone      = document.getElementById('drop-zone');
-  const dropZoneText  = document.getElementById('drop-zone-text');
-  const analysisMode  = document.getElementById('analysis-mode');
-  const loadingEl     = document.getElementById('loading');
-  const resultsSection = document.getElementById('results-section');
-=======
   // -- Configuration --------------------------------------------------------
   const API_BASE = window.API_BASE_URL || 'http://localhost:7071/api';
 
@@ -63,20 +35,11 @@
   const loadingEl      = document.getElementById('loading');
   const resultsSection = document.getElementById('results-section');
   const langSelect     = document.getElementById('lang-select');
->>>>>>> origin/main
 
   // Result blocks
   const resultClassify  = document.getElementById('result-classify');
   const resultAnalyze   = document.getElementById('result-analyze');
   const resultGuidance  = document.getElementById('result-guidance');
-<<<<<<< HEAD
-  const resultError     = document.getElementById('result-error');
-
-  let activeTab = 'text';
-  let selectedFile = null;
-
-  // ── Tab switching ─────────────────────────────────────────────────────
-=======
   const resultSentiment = document.getElementById('result-sentiment');
   const resultError     = document.getElementById('result-error');
   const feedbackWidget  = document.getElementById('feedback-widget');
@@ -86,38 +49,10 @@
   let currentTranslations = {};
 
   // -- Tab switching --------------------------------------------------------
->>>>>>> origin/main
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
       tabPanels.forEach(p => p.classList.remove('active'));
-<<<<<<< HEAD
-
-      tab.classList.add('active');
-      tab.setAttribute('aria-selected', 'true');
-      activeTab = tab.dataset.tab;
-      document.getElementById(`tab-${activeTab}`).classList.add('active');
-    });
-  });
-
-  // ── File upload ───────────────────────────────────────────────────────
-  imageInput.addEventListener('change', () => {
-    if (imageInput.files.length) {
-      selectedFile = imageInput.files[0];
-      dropZoneText.textContent = `✅ ${selectedFile.name}`;
-    }
-  });
-
-  dropZone.addEventListener('dragover', e => {
-    e.preventDefault();
-    dropZone.classList.add('drag-over');
-  });
-
-  dropZone.addEventListener('dragleave', () => {
-    dropZone.classList.remove('drag-over');
-  });
-
-=======
       tab.classList.add('active');
       tab.setAttribute('aria-selected', 'true');
       activeTab = tab.dataset.tab;
@@ -135,50 +70,26 @@
 
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
   dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('drag-over'); });
->>>>>>> origin/main
   dropZone.addEventListener('drop', e => {
     e.preventDefault();
     dropZone.classList.remove('drag-over');
     const files = e.dataTransfer.files;
     if (files.length && files[0].type.startsWith('image/')) {
       selectedFile = files[0];
-<<<<<<< HEAD
-      dropZoneText.textContent = `✅ ${selectedFile.name}`;
-    }
-  });
-
-  // ── Analyse button ─────────────────────────────────────────────────────
-=======
       dropZoneText.textContent = selectedFile.name;
     }
   });
 
   // -- Analyse button -------------------------------------------------------
->>>>>>> origin/main
   analyzeBtn.addEventListener('click', async () => {
     let text = '';
 
     if (activeTab === 'text') {
       text = messageInput.value.trim();
-<<<<<<< HEAD
-      if (!text) {
-        alert('Please paste a message to analyse.');
-        return;
-      }
-    } else {
-      if (!selectedFile) {
-        alert('Please select or drop an image file.');
-        return;
-      }
-      try {
-        text = await extractTextFromImage(selectedFile);
-      } catch {
-=======
       if (!text) { alert('Please paste a message to analyse.'); return; }
     } else {
       if (!selectedFile) { alert('Please select or drop an image file.'); return; }
       try { text = await extractTextFromImage(selectedFile); } catch {
->>>>>>> origin/main
         showError('Failed to process the image. Please try pasting the text instead.');
         return;
       }
@@ -191,10 +102,7 @@
     try {
       const data = await callApi(mode, text);
       renderResult(mode, data);
-<<<<<<< HEAD
-=======
       feedbackWidget.classList.remove('hidden');
->>>>>>> origin/main
     } catch (err) {
       showError(err.message || 'An unexpected error occurred. Please try again.');
     } finally {
@@ -202,17 +110,10 @@
     }
   });
 
-<<<<<<< HEAD
-  // ── API calls ─────────────────────────────────────────────────────────
-  async function callApi(endpoint, text) {
-    const url = `${API_BASE}/${endpoint}`;
-    const body = { text };
-=======
   // -- API calls ------------------------------------------------------------
   async function callApi(endpoint, text) {
     const url = API_BASE + '/' + endpoint;
     const body = { text: text, session_id: SESSION_ID };
->>>>>>> origin/main
 
     const response = await fetch(url, {
       method: 'POST',
@@ -222,30 +123,6 @@
 
     if (!response.ok) {
       let detail = '';
-<<<<<<< HEAD
-      try {
-        const errBody = await response.json();
-        detail = errBody.error || errBody.detail || '';
-      } catch { /* ignore */ }
-      throw new Error(`API error ${response.status}${detail ? ': ' + detail : ''}.`);
-    }
-
-    return response.json();
-  }
-
-  // ── Image text extraction (client-side placeholder) ────────────────────
-  /**
-   * Converts the image to a base64 data URI and returns it as the "text"
-   * payload. The backend is responsible for OCR or multi-modal analysis.
-   *
-   * Replace this with a real OCR call (e.g. Azure AI Vision Read API) if
-   * you need client-side text extraction.
-   */
-  function extractTextFromImage(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result); // base64 data URI
-=======
       try { const errBody = await response.json(); detail = errBody.error || errBody.detail || ''; } catch {}
       throw new Error('API error ' + response.status + (detail ? ': ' + detail : '') + '.');
     }
@@ -257,17 +134,12 @@
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
->>>>>>> origin/main
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
   }
 
-<<<<<<< HEAD
-  // ── Render results ─────────────────────────────────────────────────────
-=======
   // -- Render results -------------------------------------------------------
->>>>>>> origin/main
   function renderResult(mode, data) {
     resultsSection.classList.remove('hidden');
 
@@ -275,15 +147,9 @@
       const classification = data.classification || 'UNKNOWN';
       const badge = document.getElementById('classification-badge');
       badge.textContent = classification.replace(/_/g, ' ');
-<<<<<<< HEAD
-      badge.className = `badge badge-${classification}`;
-      document.getElementById('confidence-value').textContent =
-        data.confidence != null ? `${Math.round(data.confidence * 100)}%` : 'N/A';
-=======
       badge.className = 'badge badge-' + classification;
       document.getElementById('confidence-value').textContent =
         data.confidence != null ? Math.round(data.confidence * 100) + '%' : 'N/A';
->>>>>>> origin/main
       document.getElementById('reasoning-value').textContent = data.reasoning || '';
       resultClassify.classList.remove('hidden');
 
@@ -300,16 +166,6 @@
       populateList('prevention-tips-list', data.prevention_tips);
       populateResourcesList('resources-list', data.resources);
       resultGuidance.classList.remove('hidden');
-<<<<<<< HEAD
-    }
-  }
-
-  function populateList(elementId, items, _type = 'ul') {
-    const el = document.getElementById(elementId);
-    el.innerHTML = '';
-    if (!items || items.length === 0) {
-      const li = document.createElement('li');
-=======
 
     } else if (mode === 'sentiment') {
       renderSentimentResult(data);
@@ -372,53 +228,32 @@
     el.innerHTML = '';
     if (!items || items.length === 0) {
       var li = document.createElement('li');
->>>>>>> origin/main
       li.textContent = 'None identified.';
       li.style.color = 'var(--color-muted)';
       el.appendChild(li);
       return;
     }
-<<<<<<< HEAD
-    items.forEach(item => {
-      const li = document.createElement('li');
-=======
     items.forEach(function (item) {
       var li = document.createElement('li');
->>>>>>> origin/main
       li.textContent = item;
       el.appendChild(li);
     });
   }
 
   function populateResourcesList(elementId, items) {
-<<<<<<< HEAD
-    const el = document.getElementById(elementId);
-    el.innerHTML = '';
-    if (!items || items.length === 0) {
-      const li = document.createElement('li');
-=======
     var el = document.getElementById(elementId);
     el.innerHTML = '';
     if (!items || items.length === 0) {
       var li = document.createElement('li');
->>>>>>> origin/main
       li.textContent = 'No specific resources provided.';
       li.style.color = 'var(--color-muted)';
       el.appendChild(li);
       return;
     }
-<<<<<<< HEAD
-    items.forEach(item => {
-      const li = document.createElement('li');
-      // If the item looks like a URL, render it as a link
-      if (/^https?:\/\//i.test(item)) {
-        const a = document.createElement('a');
-=======
     items.forEach(function (item) {
       var li = document.createElement('li');
       if (/^https?:\/\//i.test(item)) {
         var a = document.createElement('a');
->>>>>>> origin/main
         a.href = item;
         a.textContent = item;
         a.target = '_blank';
@@ -431,11 +266,7 @@
     });
   }
 
-<<<<<<< HEAD
-  // ── UI helpers ─────────────────────────────────────────────────────────
-=======
   // -- UI helpers -----------------------------------------------------------
->>>>>>> origin/main
   function setLoading(isLoading) {
     loadingEl.classList.toggle('hidden', !isLoading);
     analyzeBtn.disabled = isLoading;
@@ -443,26 +274,15 @@
 
   function hideAllResults() {
     resultsSection.classList.add('hidden');
-<<<<<<< HEAD
-    [resultClassify, resultAnalyze, resultGuidance, resultError].forEach(el => {
-      el.classList.add('hidden');
-    });
-=======
     [resultClassify, resultAnalyze, resultGuidance, resultSentiment, resultError].forEach(function (el) {
       if (el) el.classList.add('hidden');
     });
     feedbackWidget.classList.add('hidden');
->>>>>>> origin/main
   }
 
   function showError(message) {
     resultsSection.classList.remove('hidden');
     resultError.classList.remove('hidden');
-<<<<<<< HEAD
-    document.getElementById('error-message').textContent = `⚠️ ${message}`;
-  }
-
-=======
     document.getElementById('error-message').textContent = message;
   }
 
@@ -571,5 +391,4 @@
   // Load history on page load
   loadHistory();
 
->>>>>>> origin/main
 })();
