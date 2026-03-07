@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs wc -l)",
+      "Bash(wc -l \"C:\\\\Users\\\\namas\\\\OneDrive\\\\Desktop\\\\dont_lie_to_me_azure-main\\\\src\\\\backend\"/**/*.py)",
+      "WebFetch(domain:github.com)",
+      "Bash(python3 -c \":*)",
+      "Bash(python -c \":*)",
+      "Bash(python -m pytest tests -q)",
+      "Bash(python -m pytest tests/test_functions.py -q)",
+      "Bash(python -m pytest tests/test_url_checker.py -q)",
+      "Bash(gh auth status)",
+      "Bash(git --version)"
+    ]
+  }
+}
