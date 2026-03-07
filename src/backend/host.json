@@ -21,5 +21,11 @@
   },
   "http": {
     "routePrefix": "api"
+  },
+  "cors": {
+    "allowedOrigins": [
+      "*"
+    ],
+    "supportCredentials": false
   }
 }

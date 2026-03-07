@@ -2,14 +2,19 @@
 Dont Lie To Me – Azure
 Azure Functions v2 (Python) entry point.
 
-HTTP endpoints are served via Blueprint.
+HTTP endpoints use shared service layer.
 MCP tools are registered directly on the FunctionApp.
+CORS is enabled for local development and cross-origin requests.
 """
 
+import json
+import logging
+
 import azure.functions as func
-from shared.ai_client import AzureAIClient
 from shared.url_checker import URLChecker
 from shared.models import CheckURLRequest, CheckURLResponse
+from shared.cors import add_cors_headers
+from services import scam_classifier, message_analyzer, guidance_generator
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
@@ -34,21 +39,30 @@ def _get_url_checker() -> URLChecker:
 # Health check
 # ---------------------------------------------------------------------------
 
-@app.route(route="health", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
+@app.route(route="health", methods=["GET", "OPTIONS"], auth_level=func.AuthLevel.ANONYMOUS)
 def health(req: func.HttpRequest) -> func.HttpResponse:
     """Simple liveness probe – no auth required."""
-    return func.HttpResponse(
+    if req.method == "OPTIONS":
+        return func.HttpResponse("", status_code=200, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Max-Age": "3600"
+        })
+    
+    response = func.HttpResponse(
         json.dumps({"status": "ok", "service": "dont-lie-to-me-azure"}),
         status_code=200,
         mimetype="application/json",
     )
+    return add_cors_headers(response)
 
 
 # ---------------------------------------------------------------------------
 # URL threat checking
 # ---------------------------------------------------------------------------
 
-@app.route(route="check-url", methods=["POST"])
+@app.route(route="check-url", methods=["POST", "OPTIONS"])
 def check_url(req: func.HttpRequest) -> func.HttpResponse:
     """
     Check if a URL is flagged as a threat by threat intelligence sources.
@@ -102,11 +116,12 @@ def check_url(req: func.HttpRequest) -> func.HttpResponse:
             error="Request body must be valid JSON",
             error_code="INVALID_JSON",
         )
-        return func.HttpResponse(
+        http_response = func.HttpResponse(
             response.model_dump_json(),
             status_code=400,
             mimetype="application/json",
         )
+        return add_cors_headers(http_response)
 
     # Validate request
     try:
@@ -117,11 +132,12 @@ def check_url(req: func.HttpRequest) -> func.HttpResponse:
             error=f"Invalid request: {str(exc)}",
             error_code="INVALID_REQUEST",
         )
-        return func.HttpResponse(
+        http_response = func.HttpResponse(
             response.model_dump_json(),
             status_code=400,
             mimetype="application/json",
         )
+        return add_cors_headers(http_response)
 
     # Get URL checker
     url_checker = _get_url_checker()
@@ -149,11 +165,12 @@ def check_url(req: func.HttpRequest) -> func.HttpResponse:
             error=None,
             error_code=None,
         )
-        return func.HttpResponse(
+        http_response = func.HttpResponse(
             response.model_dump_json(),
             status_code=200,
             mimetype="application/json",
         )
+        return add_cors_headers(http_response)
 
     except Exception as exc:
         logger.exception("URL check failed for URL: %s", request_data.url)
@@ -162,16 +179,17 @@ def check_url(req: func.HttpRequest) -> func.HttpResponse:
             error=f"Check failed: {str(exc)}",
             error_code="CHECK_FAILED",
         )
-        return func.HttpResponse(
+        http_response = func.HttpResponse(
             response.model_dump_json(),
             status_code=500,
             mimetype="application/json",
         )
+        return add_cors_headers(http_response)
 
 
 
 
-@app.route(route="classify", methods=["POST"])
+@app.route(route="classify", methods=["POST", "OPTIONS"])
 def classify_scam(req: func.HttpRequest) -> func.HttpResponse:
     """
     Classify whether the supplied text / message is a scam.
@@ -188,6 +206,14 @@ def classify_scam(req: func.HttpRequest) -> func.HttpResponse:
             "reasoning": "<brief explanation>"
         }
     """
+    if req.method == "OPTIONS":
+        return func.HttpResponse("", status_code=200, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Max-Age": "3600"
+        })
+    
     try:
         body = req.get_json()
     except ValueError:
@@ -197,37 +223,25 @@ def classify_scam(req: func.HttpRequest) -> func.HttpResponse:
     if not text:
         return _bad_request("'text' field is required and must not be empty.")
 
-    system_prompt = (
-        "You are an expert anti-scam analyst. "
-        "Classify the following message as one of: SCAM, LIKELY_SCAM, SUSPICIOUS, or SAFE. "
-        "Reply ONLY with a JSON object matching this schema: "
-        '{"classification": "...", "confidence": 0.0, "reasoning": "..."}. '
-        "Do not include markdown fences."
-    )
-
     try:
-        client = AzureAIClient()
-        raw = client.chat(system_prompt=system_prompt, user_message=text)
-        result = json.loads(raw)
-    except json.JSONDecodeError:
-        logger.warning("Model returned non-JSON output: %s", raw)
-        result = {"classification": "UNKNOWN", "confidence": 0.0, "reasoning": raw}
+        result = scam_classifier.classify_scam(text)
     except Exception as exc:
         logger.exception("Classification failed")
         return _internal_error(str(exc))
 
-    return func.HttpResponse(
+    response = func.HttpResponse(
         json.dumps(result),
         status_code=200,
         mimetype="application/json",
     )
+    return add_cors_headers(response)
 
 
 # ---------------------------------------------------------------------------
 # Message analysis
 # ---------------------------------------------------------------------------
 
-@app.route(route="analyze", methods=["POST"])
+@app.route(route="analyze", methods=["POST", "OPTIONS"])
 def analyze_message(req: func.HttpRequest) -> func.HttpResponse:
     """
     Perform a detailed analysis of the supplied text, highlighting red flags,
@@ -246,6 +260,14 @@ def analyze_message(req: func.HttpRequest) -> func.HttpResponse:
             "summary": "..."
         }
     """
+    if req.method == "OPTIONS":
+        return func.HttpResponse("", status_code=200, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Max-Age": "3600"
+        })
+    
     try:
         body = req.get_json()
     except ValueError:
@@ -255,42 +277,25 @@ def analyze_message(req: func.HttpRequest) -> func.HttpResponse:
     if not text:
         return _bad_request("'text' field is required and must not be empty.")
 
-    system_prompt = (
-        "You are a cybersecurity expert specialising in social engineering and scam detection. "
-        "Analyse the provided message and return a JSON object with these keys: "
-        '"red_flags" (list of strings), "persuasion_techniques" (list of strings), '
-        '"impersonation_indicators" (list of strings), "summary" (string). '
-        "Do not include markdown fences."
-    )
-
     try:
-        client = AzureAIClient()
-        raw = client.chat(system_prompt=system_prompt, user_message=text)
-        result = json.loads(raw)
-    except json.JSONDecodeError:
-        logger.warning("Model returned non-JSON output: %s", raw)
-        result = {
-            "red_flags": [],
-            "persuasion_techniques": [],
-            "impersonation_indicators": [],
-            "summary": raw,
-        }
+        result = message_analyzer.analyze_message(text)
     except Exception as exc:
         logger.exception("Analysis failed")
         return _internal_error(str(exc))
 
-    return func.HttpResponse(
+    response = func.HttpResponse(
         json.dumps(result),
         status_code=200,
         mimetype="application/json",
     )
+    return add_cors_headers(response)
 
 
 # ---------------------------------------------------------------------------
 # Safety guidance
 # ---------------------------------------------------------------------------
 
-@app.route(route="guidance", methods=["POST"])
+@app.route(route="guidance", methods=["POST", "OPTIONS"])
 def safety_guidance(req: func.HttpRequest) -> func.HttpResponse:
     """
     Generate step-by-step safety guidance for a user who has received a
@@ -310,6 +315,14 @@ def safety_guidance(req: func.HttpRequest) -> func.HttpResponse:
             "resources": ["..."]
         }
     """
+    if req.method == "OPTIONS":
+        return func.HttpResponse("", status_code=200, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Max-Age": "3600"
+        })
+    
     try:
         body = req.get_json()
     except ValueError:
@@ -320,41 +333,19 @@ def safety_guidance(req: func.HttpRequest) -> func.HttpResponse:
         return _bad_request("'text' field is required and must not be empty.")
 
     context = body.get("context", "").strip()
-    user_message = f"Message: {text}"
-    if context:
-        user_message += f"\n\nAdditional context: {context}"
-
-    system_prompt = (
-        "You are a consumer protection advisor. "
-        "A user has received a potentially fraudulent message. "
-        "Provide practical safety guidance as a JSON object with keys: "
-        '"immediate_actions" (list), "reporting_steps" (list), '
-        '"prevention_tips" (list), "resources" (list of helpful URLs or organisations). '
-        "Do not include markdown fences."
-    )
 
     try:
-        client = AzureAIClient()
-        raw = client.chat(system_prompt=system_prompt, user_message=user_message)
-        result = json.loads(raw)
-    except json.JSONDecodeError:
-        logger.warning("Model returned non-JSON output: %s", raw)
-        result = {
-            "immediate_actions": [],
-            "reporting_steps": [],
-            "prevention_tips": [],
-            "resources": [],
-            "note": raw,
-        }
+        result = guidance_generator.generate_guidance(text, context)
     except Exception as exc:
         logger.exception("Guidance generation failed")
         return _internal_error(str(exc))
 
-    return func.HttpResponse(
+    response = func.HttpResponse(
         json.dumps(result),
         status_code=200,
         mimetype="application/json",
     )
+    return add_cors_headers(response)
 
 
 # ---------------------------------------------------------------------------
@@ -362,16 +353,18 @@ def safety_guidance(req: func.HttpRequest) -> func.HttpResponse:
 # ---------------------------------------------------------------------------
 
 def _bad_request(message: str) -> func.HttpResponse:
-    return func.HttpResponse(
+    response = func.HttpResponse(
         json.dumps({"error": message}),
         status_code=400,
         mimetype="application/json",
     )
+    return add_cors_headers(response)
 
 
 def _internal_error(message: str) -> func.HttpResponse:
-    return func.HttpResponse(
+    response = func.HttpResponse(
         json.dumps({"error": "Internal server error.", "detail": message}),
         status_code=500,
         mimetype="application/json",
     )
+    return add_cors_headers(response)

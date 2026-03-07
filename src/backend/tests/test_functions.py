@@ -63,16 +63,16 @@ class TestClassifyEndpoint(unittest.TestCase):
         response = classify_scam(req)
         self.assertEqual(response.status_code, 400)
 
-    @patch("blueprints.http_api.AzureAIClient")
-    def test_valid_request_returns_classification(self, MockClient):
+    @patch("services.scam_classifier.classify_scam")
+    def test_valid_request_returns_classification(self, mock_classify):
         """Valid request should return classification JSON from the AI model."""
         from blueprints.http_api import classify_scam
 
-        mock_instance = MagicMock()
-        mock_instance.chat.return_value = json.dumps(
-            {"classification": "SCAM", "confidence": 0.97, "reasoning": "Phishing attempt"}
-        )
-        MockClient.return_value = mock_instance
+        mock_classify.return_value = {
+            "classification": "SCAM",
+            "confidence": 0.97,
+            "reasoning": "Phishing attempt"
+        }
 
         req = self._make_request({"text": "Your account has been compromised. Click here."})
         response = classify_scam(req)
@@ -81,15 +81,18 @@ class TestClassifyEndpoint(unittest.TestCase):
         body = json.loads(response.get_body())
         self.assertEqual(body["classification"], "SCAM")
         self.assertAlmostEqual(body["confidence"], 0.97)
+        mock_classify.assert_called_once()
 
-    @patch("blueprints.http_api.AzureAIClient")
-    def test_non_json_model_response_returns_unknown(self, MockClient):
+    @patch("services.scam_classifier.classify_scam")
+    def test_non_json_model_response_returns_unknown(self, mock_classify):
         """If the model returns non-JSON, classification should be UNKNOWN."""
         from blueprints.http_api import classify_scam
 
-        mock_instance = MagicMock()
-        mock_instance.chat.return_value = "This looks like a scam."
-        MockClient.return_value = mock_instance
+        mock_classify.return_value = {
+            "classification": "UNKNOWN",
+            "confidence": 0.0,
+            "reasoning": "This looks like a scam."
+        }
 
         req = self._make_request({"text": "Win a free prize!"})
         response = classify_scam(req)
@@ -135,19 +138,16 @@ class TestAnalyzeEndpoint(unittest.TestCase):
         response = analyze_message(req)
         self.assertEqual(response.status_code, 400)
 
-    @patch("blueprints.http_api.AzureAIClient")
-    def test_valid_request_returns_analysis(self, MockClient):
+    @patch("services.message_analyzer.analyze_message")
+    def test_valid_request_returns_analysis(self, mock_analyze):
         from blueprints.http_api import analyze_message
 
-        expected = {
+        mock_analyze.return_value = {
             "red_flags": ["Urgency"],
             "persuasion_techniques": ["Fear appeal"],
             "impersonation_indicators": ["Claims to be HMRC"],
             "summary": "Classic phishing email.",
         }
-        mock_instance = MagicMock()
-        mock_instance.chat.return_value = json.dumps(expected)
-        MockClient.return_value = mock_instance
 
         req = self._make_request({"text": "Pay your tax bill now or face arrest."})
         response = analyze_message(req)
@@ -156,6 +156,7 @@ class TestAnalyzeEndpoint(unittest.TestCase):
         body = json.loads(response.get_body())
         self.assertIn("red_flags", body)
         self.assertEqual(body["summary"], "Classic phishing email.")
+        mock_analyze.assert_called_once()
 
 
 class TestGuidanceEndpoint(unittest.TestCase):
@@ -179,19 +180,16 @@ class TestGuidanceEndpoint(unittest.TestCase):
         response = safety_guidance(req)
         self.assertEqual(response.status_code, 400)
 
-    @patch("blueprints.http_api.AzureAIClient")
-    def test_valid_request_returns_guidance(self, MockClient):
+    @patch("services.guidance_generator.generate_guidance")
+    def test_valid_request_returns_guidance(self, mock_generate):
         from blueprints.http_api import safety_guidance
 
-        expected = {
+        mock_generate.return_value = {
             "immediate_actions": ["Do not click links"],
             "reporting_steps": ["Report to Action Fraud"],
             "prevention_tips": ["Use 2FA"],
             "resources": ["https://www.actionfraud.police.uk/"],
         }
-        mock_instance = MagicMock()
-        mock_instance.chat.return_value = json.dumps(expected)
-        MockClient.return_value = mock_instance
 
         req = self._make_request(
             {"text": "Your package is on hold.", "context": "Received via SMS"}
@@ -202,6 +200,7 @@ class TestGuidanceEndpoint(unittest.TestCase):
         body = json.loads(response.get_body())
         self.assertIn("immediate_actions", body)
         self.assertIn("resources", body)
+        mock_generate.assert_called_once()
 
 
 class TestAzureAIClient(unittest.TestCase):

@@ -4,11 +4,22 @@
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "python",
     "PYTHON_ISOLATE_WORKER_DEPENDENCIES": "1",
+
+    "_comment_provider": "AI_PROVIDER options: azure (production) | github (local dev) | mock (testing)",
+    "AI_PROVIDER": "github",
+
+    "_comment_azure": "Azure AI Foundry configuration (required when AI_PROVIDER=azure)",
     "AZURE_AI_ENDPOINT": "https://<your-ai-foundry-endpoint>.openai.azure.com/",
     "AZURE_AI_DEPLOYMENT_NAME": "gpt-4o",
     "AZURE_AI_API_VERSION": "2024-02-01",
-    "AZURE_KEYVAULT_URL": "https://<your-keyvault-name>.vault.azure.net/",
     "AZURE_AI_API_KEY": "<your-api-key-or-use-managed-identity>",
+
+    "_comment_github": "GitHub Models configuration (required when AI_PROVIDER=github)",
+    "GITHUB_TOKEN": "<your-github-token>",
+    "GITHUB_MODEL": "gpt-4o-mini",
+    "GITHUB_MODELS_ENDPOINT": "https://models.github.ai/inference",
+
+    "AZURE_KEYVAULT_URL": "https://<your-keyvault-name>.vault.azure.net/",
     "STORAGE_ACCOUNT_CONNECTION_STRING": "DefaultEndpointsProtocol=https;AccountName=<your-account>;AccountKey=<your-key>;EndpointSuffix=core.windows.net",
     "COSMOS_DB_CONNECTION_STRING": "",
     "COSMOS_DB_ENDPOINT": "https://<your-cosmos-account>.documents.azure.com:443/",

@@ -1,15 +1,16 @@
 """
-Pydantic data models for URL checking feature.
+Pydantic data models for URL checking and agent runtime features.
 
 Provides structured, validated data models for:
 - Individual threat intelligence source results
 - Risk hint analysis results
 - Final aggregated URL check results
 - API request/response contracts
+- Agent orchestration contracts
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from enum import Enum
 from pydantic import BaseModel, Field, field_validator
 
@@ -334,3 +335,125 @@ class CheckURLResponse(BaseModel):
                 "error_code": None,
             }
         }
+
+
+# ---------------------------------------------------------------------------
+# Agent Runtime Contracts (Phase D)
+# ---------------------------------------------------------------------------
+
+
+class AgentIntent(str, Enum):
+    """High-level intent detected for agent routing."""
+
+    TRIAGE = "TRIAGE"
+    ANALYZE = "ANALYZE"
+    GUIDANCE = "GUIDANCE"
+
+
+class AgentRequest(BaseModel):
+    """Standard request contract for all agent channels."""
+
+    message: str = Field(..., description="User message to process.")
+    session_id: Optional[str] = Field(
+        default=None,
+        description="Optional session identifier for continuity.",
+    )
+    channel: str = Field(
+        default="http",
+        description="Origin channel (http, mcp, future assistant adapters).",
+    )
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Channel-specific metadata for extensibility.",
+    )
+
+    @field_validator("message")
+    @classmethod
+    def validate_message(cls, value: str) -> str:
+        """Ensure request message is non-empty."""
+        if not value or not value.strip():
+            raise ValueError("message must not be empty")
+        return value.strip()
+
+
+class AgentContext(BaseModel):
+    """Runtime context shared across orchestrator and team agents."""
+
+    session_id: Optional[str] = Field(default=None)
+    latest_summary: Optional[str] = Field(
+        default=None,
+        description="Latest concise context summary from prior turns.",
+    )
+    conversation_history: List[Dict[str, str]] = Field(
+        default_factory=list,
+        description="Optional prior exchanges as role/content objects.",
+    )
+    url_candidates: List[str] = Field(
+        default_factory=list,
+        description="Extracted URL candidates from recent messages.",
+    )
+    flags: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Mutable runtime flags for orchestration decisions.",
+    )
+
+
+class ToolCallResult(BaseModel):
+    """Normalized result from a tool invocation."""
+
+    tool_name: str = Field(..., description="Tool identifier.")
+    success: bool = Field(..., description="Whether the call completed successfully.")
+    output: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Structured output payload if call succeeded.",
+    )
+    error: Optional[str] = Field(
+        default=None,
+        description="Error detail if call failed.",
+    )
+    latency_ms: Optional[int] = Field(
+        default=None,
+        description="Execution latency in milliseconds.",
+    )
+
+
+class OrchestrationTraceStep(BaseModel):
+    """Single routing decision step inside orchestration."""
+
+    selected_team: str = Field(..., description="Team selected for this step.")
+    reason: str = Field(..., description="Deterministic reason for routing.")
+    timestamp: str = Field(..., description="Step timestamp (ISO 8601).")
+
+
+class OrchestrationTrace(BaseModel):
+    """End-to-end trace for one orchestration run."""
+
+    routing_version: str = Field(..., description="Routing policy version.")
+    detected_intent: AgentIntent = Field(..., description="Detected primary intent.")
+    has_url: bool = Field(..., description="Whether user message contains URL-like text.")
+    steps: List[OrchestrationTraceStep] = Field(
+        default_factory=list,
+        description="Ordered routing and execution steps.",
+    )
+    notes: List[str] = Field(
+        default_factory=list,
+        description="Additional orchestration notes for observability.",
+    )
+
+
+class AgentResponse(BaseModel):
+    """Unified response contract returned by orchestrator and agents."""
+
+    team: str = Field(..., description="Responding team or orchestrator id.")
+    intent: AgentIntent = Field(..., description="Detected or resolved intent.")
+    confidence: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Confidence score for current response composition.",
+    )
+    result: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Final output payload.",
+    )
+    trace: OrchestrationTrace = Field(..., description="Orchestration trace metadata.")
