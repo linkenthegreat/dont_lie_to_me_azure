@@ -1,0 +1,78 @@
+1. Hive Moderation – AI Image Detection API (Free Tier)
+Website: hive.ai
+Type: Freemium (free monthly quota)
+Detects:
+- AI‑generated images (Midjourney, DALL·E, Stable Diffusion)
+- Deepfakes
+- Manipulated images
+- NSFW content (optional)
+Why it’s good:
+- Reliable industry‑level model
+- Simple REST API
+- Free tier is enough for hackathon demos
+Use case for us:
+Detect fake crypto screenshots, fake IDs, fake “proof of payment”.
+
+2. Sensity AI – Deepfake Detection (Free Developer Access)
+Website: sensity.ai
+Type: Free developer tier
+Detects:
+- Deepfakes
+- Face swaps
+- Synthetic identities
+- Manipulated photos/videos
+Why it’s good:
+- Used by banks and law enforcement
+- Strong identity‑related detection
+Use case for us:
+Detect fake profile photos or impersonation scams.
+
+3. Illuminarty AI Detector (Free API)
+Website: illuminarty.ai
+Type: Free API
+Detects:
+- AI‑generated images
+- GAN fingerprints
+- Manipulated images
+Why it’s good:
+- Fully free
+- Good accuracy for Midjourney/Stable Diffusion
+- Easy to integrate
+Use case for us:
+Detect fake investment dashboards or fake promotional images.
+
+4. DeepAI – Image Detection API (Free Tier)
+Website: deepai.org
+Type: Free tier
+Detects:
+- AI‑generated images
+- Manipulated images
+- Style fingerprints
+Why it’s good:
+- Very simple API
+- No credit card required
+- Good for quick demos
+Use case for us:
+General fake‑image detection for scam submissions.
+
+5. Open‑Source Local Models (Completely Free, No API Cost)
+Examples:
+- NVIDIA Fake Image Detector
+- Deepfake Detection Challenge models
+- Google SynthID detector
+- Stable Diffusion watermark detectors
+Why it’s good:
+- Zero cloud cost
+- Works offline
+- Perfect for hackathon demos
+Why it’s harder:
+- Requires Python environment
+- GPU recommended
+Use case for us:
+Offline “Image Authenticity Checker” demo.
+
+Recommended for Our Project
+If we want something free + easy + fast to integrate, the top choices are:
+✔ Hive Moderation (best overall free tier)
+✔ DeepAI (simplest API)
+Both are perfect for a hackathon and require no infrastructure.
