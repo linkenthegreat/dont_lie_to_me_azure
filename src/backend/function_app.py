@@ -237,6 +237,140 @@ def check_url(req: func.HttpRequest) -> func.HttpResponse:
 
 
 # ---------------------------------------------------------------------------
+# Phase B.5: Unified Chat Interface
+# ---------------------------------------------------------------------------
+
+
+@app.route(route="chat", methods=["POST"])
+def chat(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Unified chat endpoint with agent orchestration.
+    
+    Accepts multimodal input (text, images) and routes to appropriate agents.
+    Returns conversational responses with structured data inline.
+    
+    Request schema:
+    {
+        "message": str,
+        "images": [base64_string] (optional),
+        "session_id": str (optional),
+        "context": {
+            "location": str (optional),
+            "role": str (optional),
+            "conversation_history": [{"role": str, "content": str}] (optional)
+        } (optional)
+    }
+    
+    Response schema:
+    {
+        "message": str (conversational),
+        "data": {...} (structured data for UI),
+        "agent_used": str,
+        "trace": {...} (routing metadata)
+    }
+    """
+    start_time = time.time()
+    
+    try:
+        body = req.get_json()
+    except ValueError:
+        return func.HttpResponse(
+            json.dumps({"error": "Request body must be valid JSON"}),
+            status_code=400,
+            mimetype="application/json",
+        )
+    
+    # Extract request fields
+    message = body.get("message", "").strip()
+    images = body.get("images", [])
+    session_id = body.get("session_id") or str(uuid.uuid4())
+    context_data = body.get("context", {})
+    
+    # Validate required fields
+    if not message:
+        return func.HttpResponse(
+            json.dumps({"error": "Missing required field: 'message'"}),
+            status_code=400,
+            mimetype="application/json",
+        )
+    
+    try:
+        # Import agent classes
+        from agents.base_models import AgentRequest, AgentContext
+        from agents.orchestrator import OrchestratorAgent
+        
+        # Build agent context
+        agent_context = AgentContext(
+            session_id=session_id,
+            location=context_data.get("location"),
+            role=context_data.get("role"),
+            conversation_history=context_data.get("conversation_history", []),
+            metadata=context_data.get("metadata", {}),
+        )
+        
+        # Build agent request
+        agent_request = AgentRequest(
+            text=message,
+            images=images,
+            context=agent_context,
+        )
+        
+        # Execute orchestration
+        orchestrator = OrchestratorAgent()
+        agent_response = orchestrator.execute(agent_request)
+        
+        # Build response
+        response_data = {
+            "message": agent_response.message,
+            "data": agent_response.data,
+            "agent_used": agent_response.agent_used,
+            "trace": {
+                "route_path": agent_response.trace.route_path,
+                "routing_decision": agent_response.trace.routing_decision,
+                "duration_ms": agent_response.trace.duration_ms,
+                "model_used": agent_response.trace.model_used,
+                "timestamp": agent_response.trace.timestamp.isoformat(),
+                "fallback_triggered": agent_response.trace.fallback_triggered,
+            },
+            "session_id": session_id,
+        }
+        
+        # Persist interaction (best-effort)
+        _persist_analysis(
+            endpoint="chat",
+            input_text=message,
+            result=response_data,
+            session_id=session_id,
+        )
+        
+        # Track telemetry
+        _track_request("chat", start_time, "success")
+        
+        return func.HttpResponse(
+            json.dumps(response_data),
+            status_code=200,
+            mimetype="application/json",
+        )
+        
+    except Exception as exc:
+        logger.exception(f"Chat endpoint error: {type(exc).__name__}: {str(exc)}")
+        import traceback
+        error_trace = traceback.format_exc()
+        logger.error(f"Full traceback:\n{error_trace}")
+        _track_request("chat", start_time, "error")
+        
+        return func.HttpResponse(
+            json.dumps({
+                "error": f"Chat processing failed: {str(exc)}",
+                "error_type": type(exc).__name__,
+                "session_id": session_id,
+            }),
+            status_code=500,
+            mimetype="application/json",
+        )
+
+
+# ---------------------------------------------------------------------------
 # Scam classification
 # ---------------------------------------------------------------------------
 

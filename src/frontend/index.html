@@ -27,8 +27,56 @@
 
   <main class="container">
 
-    <!-- Input Section -->
-    <section class="card input-section">
+    <!-- Mode selector: Chat vs Advanced -->
+    <div class="mode-tabs" role="tablist">
+      <button class="mode-tab active" data-mode="chat" role="tab" aria-selected="true">
+        <span data-i18n="mode_chat">Chat</span>
+      </button>
+      <button class="mode-tab" data-mode="advanced" role="tab" aria-selected="false">
+        <span data-i18n="mode_advanced">Advanced</span>
+      </button>
+    </div>
+
+    <!-- Chat Mode (Phase B.5 - Unified Chat Interface) -->
+    <section id="chat-mode" class="card chat-section">
+      <div class="chat-container">
+        <div id="chat-messages" class="chat-messages" role="log" aria-live="polite">
+          <div class="chat-welcome">
+            <h3>👋 Welcome! I'm here to help you check for scams.</h3>
+            <p>You can:</p>
+            <ul>
+              <li>Type or paste a suspicious message</li>
+              <li>Drag and drop a screenshot anywhere</li>
+              <li>Share a URL to check</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="chat-input-area">
+          <div id="drop-overlay" class="drop-overlay hidden">
+            <div class="drop-overlay-content">
+              <span class="drop-icon">📎</span>
+              <p>Drop your image here</p>
+            </div>
+          </div>
+          <div class="chat-input-wrapper">
+            <textarea
+              id="chat-input"
+              class="chat-input"
+              placeholder="Type your message, paste text, or drop an image..."
+              rows="3"
+              aria-label="Chat message input"
+            ></textarea>
+            <button id="chat-send-btn" class="btn btn-primary chat-send-btn" aria-label="Send message">
+              Send
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Advanced Mode (Legacy - Backward Compatibility) -->
+    <section id="advanced-mode" class="card input-section hidden">
       <h2 data-i18n="analyze_heading">Analyze a Message</h2>
 
       <div class="tabs" role="tablist">
@@ -200,6 +248,7 @@
     </div>
   </footer>
 
+  <script src="chat.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
