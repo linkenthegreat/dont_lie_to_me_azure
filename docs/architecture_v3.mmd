@@ -1,0 +1,166 @@
+graph TD
+    %% ══════════════════════════════════════════════════════════════
+    %% Don't Lie To Me v3.1 – Production Architecture
+    %% Front Door · Redis · Cosmos DB · Sentiment · GDPR · Teams
+    %% URL Threat Intel · Image Forensics · i18n · Export · Feedback
+    %% ══════════════════════════════════════════════════════════════
+
+    User["👤 User"] -->|"HTTPS"| FrontDoor
+
+    %% ════════════════════════════════════════
+    %% EDGE
+    %% ════════════════════════════════════════
+    FrontDoor["Azure Front Door<br/>CDN · WAF · DDoS"]
+    FrontDoor -->|"Route"| SWA
+
+    %% ════════════════════════════════════════
+    %% FRONTEND
+    %% ════════════════════════════════════════
+    SWA["Azure Static Web Apps<br/>Frontend · CDN · Auto SSL<br/>Staging per PR"]
+    SWA -->|"API proxy"| FuncApp
+
+    %% ════════════════════════════════════════
+    %% BACKEND API
+    %% ════════════════════════════════════════
+    subgraph Compute["Azure Functions – Python 3.11"]
+        FuncApp["HTTP Endpoints<br/>/classify · /analyze · /guidance<br/>/sentiment · /check-url · /health<br/>/analyze-image"]
+        DataEndpoints["Data & Compliance<br/>/history · /export · /feedback<br/>/i18n · /gdpr · /notify-teams"]
+        Cleanup["⏰ Timer: cleanup<br/>Weekly · Sun 3 AM"]
+    end
+
+    FuncApp -->|"User input"| ContentSafety
+
+    %% ════════════════════════════════════════
+    %% MICROSOFT FOUNDRY
+    %% ════════════════════════════════════════
+    subgraph Foundry["Microsoft Foundry"]
+
+        ContentSafety["Azure Content Safety<br/>Pre-filter · Jailbreak<br/>detection · PII redaction"]
+
+        subgraph AgentService["Foundry Agent Service"]
+            Orchestrator["Orchestrator Agent<br/>Intent routing"]
+            ClassifyAgent["Classifier Agent<br/>SCAM · LIKELY<br/>SUSPICIOUS · SAFE"]
+            AnalyzeAgent["Analyzer Agent<br/>Red flags · Persuasion<br/>Impersonation"]
+            GuidanceAgent["Guidance Agent<br/>Safety steps<br/>Reporting · Prevention"]
+        end
+
+        GPT4o["GPT-4o<br/>Deep analysis"]
+        GPT4oMini["GPT-4o mini<br/>Fast classification"]
+
+    end
+
+    %% ════════════════════════════════════════
+    %% IMAGE FORENSICS
+    %% ════════════════════════════════════════
+    subgraph ImageForensics["Image Forensics Pipeline"]
+        PillowResize["Pillow<br/>Resize ≤ 2048 px<br/>EXIF extraction"]
+        GPT4oVision["GPT-4o Vision<br/>Multimodal analysis<br/>Manipulation · AI-gen<br/>Deepfake detection"]
+    end
+
+    FuncApp -->|"base64 image"| PillowResize
+    PillowResize -->|"Optimised image"| GPT4oVision
+    GPT4oVision -->|"Verdict JSON"| FuncApp
+
+    ContentSafety -->|"Filtered"| Orchestrator
+    Orchestrator --> ClassifyAgent
+    Orchestrator --> AnalyzeAgent
+    Orchestrator --> GuidanceAgent
+    ClassifyAgent --> GPT4oMini
+    AnalyzeAgent --> GPT4o
+    GuidanceAgent --> GPT4o
+
+    %% ════════════════════════════════════════
+    %% AZURE MCP
+    %% ════════════════════════════════════════
+    subgraph MCP["Azure MCP Server"]
+        MCPServer["MCP Tools Interface"]
+        ToolStore["store_analysis"]
+        ToolQuery["query_history"]
+        ToolScam["check_known_scam"]
+    end
+
+    Orchestrator -->|"Tool calls<br/>MCP protocol"| MCPServer
+    MCPServer --> ToolStore
+    MCPServer --> ToolQuery
+    MCPServer --> ToolScam
+
+    %% ════════════════════════════════════════
+    %% URL THREAT INTELLIGENCE
+    %% ════════════════════════════════════════
+    FuncApp -->|"URL check"| ThreatIntel["URL Threat Intel<br/>Multi-source checker<br/>Risk hints · Validators"]
+
+    %% ════════════════════════════════════════
+    %% DATA
+    %% ════════════════════════════════════════
+    subgraph Data["Data Layer"]
+        CosmosDB["Azure Cosmos DB<br/>NoSQL · PK: /sessionId<br/>TTL auto-expiry"]
+        Redis["Azure Cache for Redis<br/>Response caching · TTL 30m"]
+        BlobStorage["Azure Blob Storage<br/>Images · Logs"]
+    end
+
+    ToolStore -->|"Upsert"| CosmosDB
+    ToolQuery -->|"Query"| CosmosDB
+    ToolScam -->|"Query"| CosmosDB
+    FuncApp -->|"Cache R/W"| Redis
+    FuncApp -->|"Persist"| CosmosDB
+    FuncApp -->|"Store images"| BlobStorage
+    DataEndpoints -->|"Query"| CosmosDB
+    Cleanup -->|"Flush"| Redis
+
+    %% ════════════════════════════════════════
+    %% CROSS-CUTTING
+    %% ════════════════════════════════════════
+    KeyVault["Azure Key Vault<br/>Secrets · Managed Identity"]
+    AppInsights["Application Insights<br/>Tracing · Metrics · Alerts"]
+
+    FuncApp -.->|"RBAC"| KeyVault
+    FuncApp -.->|"Telemetry"| AppInsights
+    Foundry -.->|"Agent traces"| AppInsights
+
+    %% ════════════════════════════════════════
+    %% EXTERNAL INTEGRATIONS
+    %% ════════════════════════════════════════
+    FuncApp -->|"Scam alert<br/>Webhook"| MSTeams["Microsoft Teams<br/>Alert channel"]
+
+    %% ════════════════════════════════════════
+    %% CI/CD & COPILOT
+    %% ════════════════════════════════════════
+    subgraph DevPlatform["Developer Platform"]
+        Copilot["GitHub Copilot<br/>Code gen · PR reviews"]
+        Actions["GitHub Actions<br/>CI · CD-dev · CD-prod<br/>Bicep validation"]
+        Dependabot["Dependabot<br/>Dependency updates"]
+    end
+
+    Copilot -.->|"Assists"| Actions
+    Actions -.->|"Deploy"| SWA
+    Actions -.->|"Deploy"| Compute
+    Dependabot -.->|"PRs"| Actions
+
+    %% ════════════════════════════════════════
+    %% STYLES
+    %% ════════════════════════════════════════
+    classDef edge fill:#005f9e,stroke:#004578,color:#fff
+    classDef frontend fill:#00bcf2,stroke:#0099cc,color:#fff
+    classDef compute fill:#0078d4,stroke:#005a9e,color:#fff
+    classDef foundry fill:#6b3fa0,stroke:#4b2d73,color:#fff
+    classDef mcp fill:#e3008c,stroke:#b4006c,color:#fff
+    classDef data fill:#00a36c,stroke:#007a50,color:#fff
+    classDef crosscut fill:#d83b01,stroke:#a52c00,color:#fff
+    classDef monitor fill:#ffb900,stroke:#cc9400,color:#000
+    classDef dev fill:#2ea043,stroke:#238636,color:#fff
+    classDef external fill:#6264a7,stroke:#4b4d8f,color:#fff
+    classDef threat fill:#c50f1f,stroke:#a80000,color:#fff
+    classDef forensics fill:#8e24aa,stroke:#6a1b9a,color:#fff
+
+    class FrontDoor edge
+    class SWA frontend
+    class FuncApp,DataEndpoints,Cleanup compute
+    class ContentSafety,Orchestrator,ClassifyAgent,AnalyzeAgent,GuidanceAgent,GPT4o,GPT4oMini foundry
+    class MCPServer,ToolStore,ToolQuery,ToolScam mcp
+    class CosmosDB,Redis,BlobStorage data
+    class KeyVault crosscut
+    class AppInsights monitor
+    class Copilot,Actions,Dependabot dev
+    class MSTeams external
+    class ThreatIntel threat
+    class PillowResize,GPT4oVision forensics

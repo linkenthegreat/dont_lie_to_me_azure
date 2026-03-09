@@ -376,6 +376,102 @@ textarea:focus {
 
 .pressure-score { font-weight: 700; }
 
+/* -- Image Analysis Verdicts ----------------------------------------------- */
+.badge-AUTHENTIC          { background: var(--color-safe);        color: #fff; }
+.badge-LIKELY_MANIPULATED { background: var(--color-likely-scam); color: #fff; }
+.badge-MANIPULATED        { background: var(--color-scam);        color: #fff; }
+.badge-AI_GENERATED       { background: #7b1fa2;                  color: #fff; }
+.badge-DEEPFAKE           { background: #880e4f;                  color: #fff; }
+.badge-INCONCLUSIVE       { background: var(--color-muted);       color: #fff; }
+
+.image-verdict-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.authenticity-score-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.authenticity-score-container .bar-track {
+  flex: 1;
+  height: 14px;
+}
+
+.authenticity-fill-high   { background: var(--color-safe); }
+.authenticity-fill-medium { background: var(--color-suspicious); }
+.authenticity-fill-low    { background: var(--color-scam); }
+
+.indicators-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.indicator-card {
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  border-left: 3px solid var(--color-likely-scam);
+}
+
+.indicator-card .indicator-type {
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: var(--color-likely-scam);
+  margin-bottom: 0.25rem;
+}
+
+.indicator-card .indicator-desc {
+  font-size: 0.9rem;
+  margin-bottom: 0.35rem;
+}
+
+.indicator-card .indicator-confidence {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+.indicator-card .indicator-confidence .bar-track {
+  width: 80px;
+  height: 6px;
+}
+
+.ai-gen-badge {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 0.2rem 0.6rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.ai-gen-badge-yes { background: #7b1fa2; color: #fff; }
+.ai-gen-badge-no  { background: var(--color-safe); color: #fff; }
+
+.detail-item {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.detail-item strong {
+  display: inline-block;
+  min-width: 140px;
+  color: var(--color-primary);
+}
+
+.metadata-note {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  font-style: italic;
+}
+
 /* -- Error Block ----------------------------------------------------------- */
 .error-block {
   background: var(--color-error-bg);
