@@ -38,3 +38,8 @@ Thumbs.db
 
 # Claude Code
 .claude/
+
+#local.settings.json
+*.backup
+*.example
+*.env
