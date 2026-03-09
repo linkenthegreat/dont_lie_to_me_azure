@@ -6,8 +6,10 @@ HTTP endpoints are served directly on the FunctionApp.
 MCP tools are registered directly on the FunctionApp.
 """
 
+import hashlib
 import json
 import logging
+import re
 import time
 import uuid
 from datetime import datetime, timezone
@@ -42,6 +44,14 @@ _FALLBACK_MESSAGE_ANALYZER_PROMPT = (
     '"red_flags" (list of strings), "persuasion_techniques" (list of strings), '
     '"impersonation_indicators" (list of strings), "summary" (string). '
     "Do not include markdown fences."
+)
+
+_FALLBACK_IMAGE_ANALYZER_PROMPT = (
+    "You are a digital forensics expert. Analyze this image for signs of manipulation, "
+    "AI generation, or deepfake. Return a JSON object with keys: authenticity_score (0-1), "
+    "verdict (AUTHENTIC/LIKELY_MANIPULATED/MANIPULATED/AI_GENERATED/DEEPFAKE/INCONCLUSIVE), "
+    "manipulation_indicators (list), visual_analysis (object), ai_generation_analysis (object), "
+    "context_analysis (object), summary (string). Do not include markdown fences."
 )
 
 _FALLBACK_GUIDANCE_GENERATOR_PROMPT = (
@@ -617,6 +627,79 @@ def sentiment_analysis(req: func.HttpRequest) -> func.HttpResponse:
     _persist_analysis("sentiment", text, result, session_id)
     _track_request("sentiment", start_time, "success")
 
+    return func.HttpResponse(
+        json.dumps(result), status_code=200, mimetype="application/json"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Image authenticity analysis
+# ---------------------------------------------------------------------------
+
+_IMAGE_DATA_URI_RE = re.compile(r"^data:(image/[a-zA-Z0-9.+-]+);base64,(.+)$", re.DOTALL)
+_MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB of base64 data
+
+
+@app.route(route="analyze-image", methods=["POST"])
+def analyze_image(req: func.HttpRequest) -> func.HttpResponse:
+    """Analyze an uploaded image for signs of manipulation, AI generation, or deepfake."""
+    start_time = time.time()
+    try:
+        body = req.get_json()
+    except ValueError:
+        return _bad_request("Request body must be valid JSON.")
+
+    image_data_uri = body.get("image", "").strip()
+    if not image_data_uri:
+        return _bad_request("'image' field is required (base64 data URI).")
+
+    # Parse data URI
+    match = _IMAGE_DATA_URI_RE.match(image_data_uri)
+    if not match:
+        return _bad_request(
+            "Invalid image format. Expected a data URI like 'data:image/png;base64,...'."
+        )
+
+    image_media_type = match.group(1)
+    raw_base64 = match.group(2)
+
+    # Size check
+    if len(raw_base64) > _MAX_IMAGE_SIZE_BYTES:
+        return _bad_request("Image too large. Maximum size is 10 MB.")
+
+    session_id = body.get("session_id", "")
+
+    # Cache using hash of image content
+    image_hash = hashlib.sha256(raw_base64[:10000].encode()).hexdigest()[:32]
+    cache_key, cached_result = _try_cache_get("analyze-image", image_hash)
+    if cached_result:
+        cached_result["_cached"] = True
+        _track_request("analyze-image", start_time, "success", cached=True)
+        return func.HttpResponse(
+            json.dumps(cached_result), status_code=200, mimetype="application/json"
+        )
+
+    try:
+        from services.image_analysis_service import analyze_image as run_image_analysis
+
+        result = run_image_analysis(raw_base64, image_media_type)
+    except Exception as exc:
+        logger.exception("Image analysis failed")
+        _track_request("analyze-image", start_time, "error")
+        return _internal_error(str(exc))
+
+    # Cache result (longer TTL since images don't change)
+    _try_cache_set(cache_key, result, ttl=3600)
+
+    # Persist to Cosmos DB (store hash reference, not the full image)
+    _persist_analysis(
+        "analyze-image",
+        f"[image:{image_hash}]",
+        result,
+        session_id,
+    )
+
+    _track_request("analyze-image", start_time, "success")
     return func.HttpResponse(
         json.dumps(result), status_code=200, mimetype="application/json"
     )

@@ -1,227 +1,166 @@
 graph TD
     %% ══════════════════════════════════════════════════════════════
-    %% Don't Lie To Me v3.0 – Unified Chat + Agent Orchestration
-    %% Natural conversational UX · Intelligent routing ·
-    %% Framework-agnostic agent runtime · MCP tool integration
+    %% Don't Lie To Me v3.1 – Production Architecture
+    %% Front Door · Redis · Cosmos DB · Sentiment · GDPR · Teams
+    %% URL Threat Intel · Image Forensics · i18n · Export · Feedback
     %% ══════════════════════════════════════════════════════════════
 
-    User["👤 User<br/>Natural language<br/>Multimodal input"] -->|"HTTPS"| Frontend
+    User["👤 User"] -->|"HTTPS"| FrontDoor
 
     %% ════════════════════════════════════════
-    %% FRONTEND - Unified Chat Interface
+    %% EDGE
     %% ════════════════════════════════════════
-    subgraph FrontendLayer["Frontend Layer"]
-        Frontend["Unified Chat Interface<br/>Message thread · Drag & drop<br/>Paste clipboard images<br/>No mode selection required"]
-        AdvancedUI["Advanced Mode (Legacy)<br/>Explicit tabs & dropdowns<br/>Backward compatibility"]
+    FrontDoor["Azure Front Door<br/>CDN · WAF · DDoS"]
+    FrontDoor -->|"Route"| SWA
+
+    %% ════════════════════════════════════════
+    %% FRONTEND
+    %% ════════════════════════════════════════
+    SWA["Azure Static Web Apps<br/>Frontend · CDN · Auto SSL<br/>Staging per PR"]
+    SWA -->|"API proxy"| FuncApp
+
+    %% ════════════════════════════════════════
+    %% BACKEND API
+    %% ════════════════════════════════════════
+    subgraph Compute["Azure Functions – Python 3.11"]
+        FuncApp["HTTP Endpoints<br/>/classify · /analyze · /guidance<br/>/sentiment · /check-url · /health<br/>/analyze-image"]
+        DataEndpoints["Data & Compliance<br/>/history · /export · /feedback<br/>/i18n · /gdpr · /notify-teams"]
+        Cleanup["⏰ Timer: cleanup<br/>Weekly · Sun 3 AM"]
     end
 
-    Frontend -->|"/api/chat"| ChatEndpoint
-    AdvancedUI -->|"/api/classify · /analyze · /guidance"| DirectEndpoints
+    FuncApp -->|"User input"| ContentSafety
 
     %% ════════════════════════════════════════
-    %% BACKEND API - Dual Entry Points
+    %% MICROSOFT FOUNDRY
     %% ════════════════════════════════════════
-    subgraph APILayer["Azure Functions API Layer"]
-        ChatEndpoint["POST /api/chat<br/>Conversational endpoint<br/>Routes via Orchestrator"]
-        DirectEndpoints["Direct Endpoints<br/>/classify · /analyze<br/>/guidance · /check-url<br/>Backward compatible"]
-        HealthEndpoint["GET /api/health<br/>Liveness probe"]
-    end
+    subgraph Foundry["Microsoft Foundry"]
 
-    ChatEndpoint --> OrchestratorAgent
-    DirectEndpoints --> Services
+        ContentSafety["Azure Content Safety<br/>Pre-filter · Jailbreak<br/>detection · PII redaction"]
 
-    %% ════════════════════════════════════════
-    %% AGENT RUNTIME - Orchestration Layer
-    %% ════════════════════════════════════════
-    subgraph AgentRuntime["Agent Runtime (Framework-Agnostic)"]
-        
-        OrchestratorAgent["🎯 Orchestrator Agent<br/>Deterministic routing<br/>Trace metadata<br/>Chain coordination"]
-        
-        subgraph ClassifierTeam["Classifier Team"]
-            ReceptionistAgent["👋 Receptionist Agent<br/>Conversational empathy<br/>Context gathering<br/>Clarification"]
-            ClassifierAgent["🔍 Classifier Agent<br/>SCAM · LIKELY_SCAM<br/>SUSPICIOUS · SAFE<br/>Fast triage"]
+        subgraph AgentService["Foundry Agent Service"]
+            Orchestrator["Orchestrator Agent<br/>Intent routing"]
+            ClassifyAgent["Classifier Agent<br/>SCAM · LIKELY<br/>SUSPICIOUS · SAFE"]
+            AnalyzeAgent["Analyzer Agent<br/>Red flags · Persuasion<br/>Impersonation"]
+            GuidanceAgent["Guidance Agent<br/>Safety steps<br/>Reporting · Prevention"]
         end
-        
-        subgraph AnalyzerTeam["Analyzer Team"]
-            TextAnalyzerAgent["📝 Text Analyzer Agent<br/>Red flags · Persuasion<br/>Impersonation patterns<br/>Deep analysis"]
-            URLAnalyzerAgent["🔗 URL Analyzer Agent<br/>Safe Browsing<br/>URLhaus · Metadata<br/>Threat intelligence"]
-            ImageAnalyzerStub["🖼️ Image Analyzer (Stub)<br/>Future: OCR + fake detection"]
-            PhoneAnalyzerStub["📞 Phone Analyzer (Stub)<br/>Future: Number validation"]
-        end
-        
-        subgraph GuidanceTeam["Guidance Team"]
-            ReportGeneratorAgent["📊 Report Generator Agent<br/>Structured reports<br/>User-friendly output<br/>Export formats"]
-            ResourceAssistantAgent["🏛️ Resource Assistant Agent<br/>Location-aware<br/>Reporting agencies<br/>Legal guidance"]
-            TranslatorStub["🌐 Translator (Stub)<br/>Future: Multi-language"]
-            EmailWriterStub["✉️ Email Writer (Stub)<br/>Future: Formal reports"]
-        end
-        
-        RecordKeeperAgent["💾 Record Keeper Agent<br/>Cross-team persistence<br/>Cosmos DB logging<br/>MCP tool exposure"]
+
+        GPT4o["GPT-4o<br/>Deep analysis"]
+        GPT4oMini["GPT-4o mini<br/>Fast classification"]
+
     end
 
-    OrchestratorAgent --> ReceptionistAgent
-    OrchestratorAgent --> ClassifierAgent
-    OrchestratorAgent --> TextAnalyzerAgent
-    OrchestratorAgent --> URLAnalyzerAgent
-    OrchestratorAgent --> ReportGeneratorAgent
-    OrchestratorAgent --> ResourceAssistantAgent
-    OrchestratorAgent --> RecordKeeperAgent
-
     %% ════════════════════════════════════════
-    %% SERVICE LAYER - Business Logic
+    %% IMAGE FORENSICS
     %% ════════════════════════════════════════
-    subgraph ServiceLayer["Service Layer (Reusable Capabilities)"]
-        Services["Domain Services<br/>classify_service<br/>analyze_service<br/>guidance_service"]
-        URLChecker["URL Checker<br/>Threat intel orchestrator<br/>Safe Browsing · URLhaus<br/>Metadata extraction"]
-        PromptLoader["Prompt Loader<br/>prompts.yaml<br/>Fallback pattern<br/>Runtime config"]
+    subgraph ImageForensics["Image Forensics Pipeline"]
+        PillowResize["Pillow<br/>Resize ≤ 2048 px<br/>EXIF extraction"]
+        GPT4oVision["GPT-4o Vision<br/>Multimodal analysis<br/>Manipulation · AI-gen<br/>Deepfake detection"]
     end
 
-    ClassifierAgent --> Services
-    TextAnalyzerAgent --> Services
-    URLAnalyzerAgent --> URLChecker
-    ReportGeneratorAgent --> Services
-    Services --> PromptLoader
+    FuncApp -->|"base64 image"| PillowResize
+    PillowResize -->|"Optimised image"| GPT4oVision
+    GPT4oVision -->|"Verdict JSON"| FuncApp
+
+    ContentSafety -->|"Filtered"| Orchestrator
+    Orchestrator --> ClassifyAgent
+    Orchestrator --> AnalyzeAgent
+    Orchestrator --> GuidanceAgent
+    ClassifyAgent --> GPT4oMini
+    AnalyzeAgent --> GPT4o
+    GuidanceAgent --> GPT4o
 
     %% ════════════════════════════════════════
-    %% AI PROVIDER LAYER - Model Abstraction
+    %% AZURE MCP
     %% ════════════════════════════════════════
-    subgraph AIProviderLayer["AI Provider Layer (Dual-Mode)"]
-        AIClient["ai_client.py<br/>Provider resolver<br/>Stable interface:<br/>chat(system, user, max, temp)"]
-        
-        GitHubProvider["GitHub Models<br/>Local development<br/>gpt-4o · gpt-4o-mini<br/>Token auth"]
-        
-        AzureProvider["Azure AI Foundry<br/>Cloud deployment<br/>Managed identity<br/>Content safety"]
+    subgraph MCP["Azure MCP Server"]
+        MCPServer["MCP Tools Interface"]
+        ToolStore["store_analysis"]
+        ToolQuery["query_history"]
+        ToolScam["check_known_scam"]
     end
 
-    Services --> AIClient
-    AIClient -->|"AI_PROVIDER=github"| GitHubProvider
-    AIClient -->|"AI_PROVIDER=azure"| AzureProvider
+    Orchestrator -->|"Tool calls<br/>MCP protocol"| MCPServer
+    MCPServer --> ToolStore
+    MCPServer --> ToolQuery
+    MCPServer --> ToolScam
 
     %% ════════════════════════════════════════
-    %% MODEL ROUTING POLICY
+    %% URL THREAT INTELLIGENCE
     %% ════════════════════════════════════════
-    subgraph ModelPolicy["Model Routing Policy"]
-        FastPath["Fast Path<br/>gpt-4o-mini<br/>Classifier · Receptionist<br/>Quick triage"]
-        DeepPath["Deep Analysis<br/>gpt-4o<br/>Analyzer · Guidance<br/>Complex reasoning"]
+    FuncApp -->|"URL check"| ThreatIntel["URL Threat Intel<br/>Multi-source checker<br/>Risk hints · Validators"]
+
+    %% ════════════════════════════════════════
+    %% DATA
+    %% ════════════════════════════════════════
+    subgraph Data["Data Layer"]
+        CosmosDB["Azure Cosmos DB<br/>NoSQL · PK: /sessionId<br/>TTL auto-expiry"]
+        Redis["Azure Cache for Redis<br/>Response caching · TTL 30m"]
+        BlobStorage["Azure Blob Storage<br/>Images · Logs"]
     end
 
-    ClassifierAgent -.->|"Policy"| FastPath
-    ReceptionistAgent -.->|"Policy"| FastPath
-    TextAnalyzerAgent -.->|"Policy"| DeepPath
-    ReportGeneratorAgent -.->|"Policy"| DeepPath
+    ToolStore -->|"Upsert"| CosmosDB
+    ToolQuery -->|"Query"| CosmosDB
+    ToolScam -->|"Query"| CosmosDB
+    FuncApp -->|"Cache R/W"| Redis
+    FuncApp -->|"Persist"| CosmosDB
+    FuncApp -->|"Store images"| BlobStorage
+    DataEndpoints -->|"Query"| CosmosDB
+    Cleanup -->|"Flush"| Redis
 
     %% ════════════════════════════════════════
-    %% MCP TOOL INTEGRATION
+    %% CROSS-CUTTING
     %% ════════════════════════════════════════
-    subgraph MCPLayer["MCP Tool Layer"]
-        MCPRegistry["Tool Registry<br/>Single source of truth<br/>Metadata + schemas<br/>Callable handlers"]
-        MCPTools["MCP Tools<br/>store_analysis<br/>query_history<br/>check_known_scam<br/>url_check"]
-    end
+    KeyVault["Azure Key Vault<br/>Secrets · Managed Identity"]
+    AppInsights["Application Insights<br/>Tracing · Metrics · Alerts"]
 
-    RecordKeeperAgent --> MCPRegistry
-    URLAnalyzerAgent --> MCPRegistry
-    MCPRegistry --> MCPTools
-    MCPTools --> CosmosDB
+    FuncApp -.->|"RBAC"| KeyVault
+    FuncApp -.->|"Telemetry"| AppInsights
+    Foundry -.->|"Agent traces"| AppInsights
 
     %% ════════════════════════════════════════
-    %% DATA LAYER
+    %% EXTERNAL INTEGRATIONS
     %% ════════════════════════════════════════
-    subgraph DataLayer["Data Layer"]
-        CosmosDB["Azure Cosmos DB<br/>NoSQL · Session state<br/>Analysis history<br/>PK: /sessionId"]
-        BlobStorage["Azure Blob Storage<br/>Images · Screenshots<br/>Query logs"]
-        CosmosService["cosmos_service.py<br/>Persistence abstraction<br/>Best-effort logging"]
-    end
-
-    RecordKeeperAgent --> CosmosService
-    CosmosService --> CosmosDB
-    Services --> BlobStorage
+    FuncApp -->|"Scam alert<br/>Webhook"| MSTeams["Microsoft Teams<br/>Alert channel"]
 
     %% ════════════════════════════════════════
-    %% CROSS-CUTTING CONCERNS
-    %% ════════════════════════════════════════
-    subgraph CrossCutting["Cross-Cutting Concerns"]
-        KeyVault["Azure Key Vault<br/>Secrets · Managed identity<br/>GITHUB_TOKEN<br/>AZURE_AI_API_KEY"]
-        AppInsights["Application Insights<br/>Tracing · Metrics<br/>Agent traces<br/>Performance monitoring"]
-        ConfigLoader["config.py<br/>Environment resolver<br/>Provider selection<br/>Feature flags"]
-    end
-
-    AIClient -.->|"RBAC"| KeyVault
-    APILayer -.->|"Telemetry"| AppInsights
-    AgentRuntime -.->|"Traces"| AppInsights
-    AIClient --> ConfigLoader
-    ConfigLoader --> KeyVault
-
-    %% ════════════════════════════════════════
-    %% DEVELOPER PLATFORM
+    %% CI/CD & COPILOT
     %% ════════════════════════════════════════
     subgraph DevPlatform["Developer Platform"]
-        Copilot["GitHub Copilot<br/>Code generation<br/>Agent implementation<br/>PR reviews"]
-        Actions["GitHub Actions<br/>CI/CD · Testing<br/>Bicep deployment<br/>Provider validation"]
-        Tests["Test Suite<br/>Unit · Integration<br/>Contract tests<br/>Orchestrator routing"]
+        Copilot["GitHub Copilot<br/>Code gen · PR reviews"]
+        Actions["GitHub Actions<br/>CI · CD-dev · CD-prod<br/>Bicep validation"]
+        Dependabot["Dependabot<br/>Dependency updates"]
     end
 
     Copilot -.->|"Assists"| Actions
-    Actions -.->|"Deploy"| APILayer
-    Tests -.->|"Validate"| AgentRuntime
-
-    %% ════════════════════════════════════════
-    %% ROUTING RULES (Orchestrator Logic)
-    %% ════════════════════════════════════════
-    subgraph RoutingRules["Orchestrator Routing Rules"]
-        GreetingRule["Greeting detected<br/>hello · hi · help<br/>→ Receptionist"]
-        URLRule["URL pattern detected<br/>http:// · https:// · www.<br/>→ URL Analyzer"]
-        SuspiciousRule["Suspicious content<br/>scam keywords · urgency<br/>→ Classifier → Analyzer → Guidance"]
-        ClarifyRule["Ambiguous input<br/>→ Receptionist for clarification"]
-    end
-
-    OrchestratorAgent -.->|"Routes"| GreetingRule
-    OrchestratorAgent -.->|"Routes"| URLRule
-    OrchestratorAgent -.->|"Routes"| SuspiciousRule
-    OrchestratorAgent -.->|"Routes"| ClarifyRule
-
-    %% ════════════════════════════════════════
-    %% KEY CONTRACTS (Data Flow)
-    %% ════════════════════════════════════════
-    subgraph Contracts["Key Contracts"]
-        AgentRequest["AgentRequest<br/>text · images[]<br/>session_context<br/>conversation_history"]
-        AgentResponse["AgentResponse<br/>message (conversational)<br/>data (structured)<br/>trace · next_agent_hint"]
-        AgentContext["AgentContext<br/>session_id<br/>user_location · user_role<br/>conversation_state"]
-    end
-
-    ChatEndpoint -.->|"Creates"| AgentRequest
-    OrchestratorAgent -.->|"Uses"| AgentContext
-    ClassifierTeam -.->|"Returns"| AgentResponse
-    AnalyzerTeam -.->|"Returns"| AgentResponse
-    GuidanceTeam -.->|"Returns"| AgentResponse
+    Actions -.->|"Deploy"| SWA
+    Actions -.->|"Deploy"| Compute
+    Dependabot -.->|"PRs"| Actions
 
     %% ════════════════════════════════════════
     %% STYLES
     %% ════════════════════════════════════════
+    classDef edge fill:#005f9e,stroke:#004578,color:#fff
     classDef frontend fill:#00bcf2,stroke:#0099cc,color:#fff
-    classDef api fill:#0078d4,stroke:#005a9e,color:#fff
-    classDef orchestrator fill:#6b3fa0,stroke:#4b2d73,color:#fff
-    classDef classifier fill:#e3008c,stroke:#b4006c,color:#fff
-    classDef analyzer fill:#00a36c,stroke:#007a50,color:#fff
-    classDef guidance fill:#ff8c00,stroke:#cc7000,color:#fff
-    classDef service fill:#107c10,stroke:#0b5a0b,color:#fff
-    classDef ai fill:#9e9e9e,stroke:#757575,color:#fff
-    classDef mcp fill:#d13438,stroke:#a52a2d,color:#fff
-    classDef data fill:#004578,stroke:#003556,color:#fff
+    classDef compute fill:#0078d4,stroke:#005a9e,color:#fff
+    classDef foundry fill:#6b3fa0,stroke:#4b2d73,color:#fff
+    classDef mcp fill:#e3008c,stroke:#b4006c,color:#fff
+    classDef data fill:#00a36c,stroke:#007a50,color:#fff
     classDef crosscut fill:#d83b01,stroke:#a52c00,color:#fff
+    classDef monitor fill:#ffb900,stroke:#cc9400,color:#000
     classDef dev fill:#2ea043,stroke:#238636,color:#fff
-    classDef stub fill:#fcd116,stroke:#c9a712,color:#000
+    classDef external fill:#6264a7,stroke:#4b4d8f,color:#fff
+    classDef threat fill:#c50f1f,stroke:#a80000,color:#fff
+    classDef forensics fill:#8e24aa,stroke:#6a1b9a,color:#fff
 
-    class Frontend,AdvancedUI frontend
-    class ChatEndpoint,DirectEndpoints,HealthEndpoint api
-    class OrchestratorAgent orchestrator
-    class ReceptionistAgent,ClassifierAgent classifier
-    class TextAnalyzerAgent,URLAnalyzerAgent,ImageAnalyzerStub,PhoneAnalyzerStub analyzer
-    class ReportGeneratorAgent,ResourceAssistantAgent,TranslatorStub,EmailWriterStub guidance
-    class RecordKeeperAgent mcp
-    class Services,URLChecker,PromptLoader,CosmosService service
-    class AIClient,GitHubProvider,AzureProvider,FastPath,DeepPath ai
-    class MCPRegistry,MCPTools mcp
-    class CosmosDB,BlobStorage data
-    class KeyVault,AppInsights,ConfigLoader crosscut
-    class Copilot,Actions,Tests dev
-    class ImageAnalyzerStub,PhoneAnalyzerStub,TranslatorStub,EmailWriterStub stub
+    class FrontDoor edge
+    class SWA frontend
+    class FuncApp,DataEndpoints,Cleanup compute
+    class ContentSafety,Orchestrator,ClassifyAgent,AnalyzeAgent,GuidanceAgent,GPT4o,GPT4oMini foundry
+    class MCPServer,ToolStore,ToolQuery,ToolScam mcp
+    class CosmosDB,Redis,BlobStorage data
+    class KeyVault crosscut
+    class AppInsights monitor
+    class Copilot,Actions,Dependabot dev
+    class MSTeams external
+    class ThreatIntel threat
+    class PillowResize,GPT4oVision forensics

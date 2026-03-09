@@ -215,6 +215,50 @@
         </div>
       </div>
 
+      <!-- Image authenticity analysis result -->
+      <div id="result-image-analysis" class="result-block hidden">
+        <div class="image-verdict-header">
+          <div id="image-verdict-badge" class="badge"></div>
+          <div class="authenticity-score-container">
+            <span>Authenticity Score:</span>
+            <div class="bar-track">
+              <div id="authenticity-score-bar" class="bar-fill"></div>
+            </div>
+            <span id="authenticity-score-value"></span>
+          </div>
+        </div>
+
+        <div class="result-group">
+          <h3>Manipulation Indicators</h3>
+          <div id="manipulation-indicators-list" class="indicators-list"></div>
+        </div>
+
+        <div class="result-group">
+          <h3>AI Generation Analysis</h3>
+          <div id="ai-generation-details"></div>
+        </div>
+
+        <div class="result-group">
+          <h3>Visual Analysis</h3>
+          <div id="visual-analysis-details"></div>
+        </div>
+
+        <div class="result-group">
+          <h3>Context Analysis</h3>
+          <div id="context-analysis-details"></div>
+        </div>
+
+        <div class="result-group">
+          <h3>Metadata</h3>
+          <div id="metadata-analysis-details"></div>
+        </div>
+
+        <div class="result-group">
+          <h3 data-i18n="summary">Summary</h3>
+          <p id="image-analysis-summary"></p>
+        </div>
+      </div>
+
       <!-- Error message -->
       <div id="result-error" class="result-block error-block hidden">
         <p id="error-message"></p>
