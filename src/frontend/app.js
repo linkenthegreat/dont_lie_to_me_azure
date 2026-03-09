@@ -37,12 +37,14 @@
   const langSelect     = document.getElementById('lang-select');
 
   // Result blocks
-  const resultClassify  = document.getElementById('result-classify');
-  const resultAnalyze   = document.getElementById('result-analyze');
-  const resultGuidance  = document.getElementById('result-guidance');
-  const resultSentiment = document.getElementById('result-sentiment');
-  const resultError     = document.getElementById('result-error');
-  const feedbackWidget  = document.getElementById('feedback-widget');
+  const resultClassify      = document.getElementById('result-classify');
+  const resultAnalyze       = document.getElementById('result-analyze');
+  const resultGuidance      = document.getElementById('result-guidance');
+  const resultSentiment     = document.getElementById('result-sentiment');
+  const resultImageAnalysis = document.getElementById('result-image-analysis');
+  const resultError         = document.getElementById('result-error');
+  const feedbackWidget      = document.getElementById('feedback-widget');
+  const modeSelector        = document.querySelector('.mode-selector');
 
   let activeTab = 'text';
   let selectedFile = null;
@@ -57,6 +59,10 @@
       tab.setAttribute('aria-selected', 'true');
       activeTab = tab.dataset.tab;
       document.getElementById('tab-' + activeTab).classList.add('active');
+      // Hide mode selector for image tab (image always uses analyze-image endpoint)
+      if (modeSelector) {
+        modeSelector.classList.toggle('hidden', activeTab === 'image');
+      }
     });
   });
 
@@ -82,18 +88,27 @@
 
   // -- Analyse button -------------------------------------------------------
   analyzeBtn.addEventListener('click', async () => {
-    let text = '';
-
-    if (activeTab === 'text') {
-      text = messageInput.value.trim();
-      if (!text) { alert('Please paste a message to analyse.'); return; }
-    } else {
+    if (activeTab === 'image') {
+      // Image tab: send directly to /analyze-image endpoint
       if (!selectedFile) { alert('Please select or drop an image file.'); return; }
-      try { text = await extractTextFromImage(selectedFile); } catch {
-        showError('Failed to process the image. Please try pasting the text instead.');
-        return;
+      setLoading(true);
+      hideAllResults();
+      try {
+        var imageDataUri = await extractTextFromImage(selectedFile);
+        var data = await callImageApi(imageDataUri);
+        renderImageResult(data);
+        feedbackWidget.classList.remove('hidden');
+      } catch (err) {
+        showError(err.message || 'Image analysis failed. Please try again.');
+      } finally {
+        setLoading(false);
       }
+      return;
     }
+
+    // Text tab: existing flow
+    var text = messageInput.value.trim();
+    if (!text) { alert('Please paste a message to analyse.'); return; }
 
     const mode = analysisMode.value;
     setLoading(true);
@@ -137,6 +152,23 @@
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+  }
+
+  // -- Image analysis API call ----------------------------------------------
+  async function callImageApi(imageDataUri) {
+    var url = API_BASE + '/analyze-image';
+    var body = { image: imageDataUri, session_id: SESSION_ID };
+    var response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      var detail = '';
+      try { var errBody = await response.json(); detail = errBody.error || errBody.detail || ''; } catch (e) {}
+      throw new Error('API error ' + response.status + (detail ? ': ' + detail : ''));
+    }
+    return response.json();
   }
 
   // -- Render results -------------------------------------------------------
@@ -266,6 +298,117 @@
     });
   }
 
+  // -- Render image analysis result -----------------------------------------
+  function renderImageResult(data) {
+    resultsSection.classList.remove('hidden');
+    resultImageAnalysis.classList.remove('hidden');
+
+    // Verdict badge
+    var verdict = data.verdict || 'INCONCLUSIVE';
+    var verdictBadge = document.getElementById('image-verdict-badge');
+    verdictBadge.textContent = verdict.replace(/_/g, ' ');
+    verdictBadge.className = 'badge badge-' + verdict;
+
+    // Authenticity score
+    var score = data.authenticity_score != null ? data.authenticity_score : 0.5;
+    var scorePct = Math.round(score * 100);
+    var scoreBar = document.getElementById('authenticity-score-bar');
+    scoreBar.style.width = scorePct + '%';
+    scoreBar.className = 'bar-fill ' + (score >= 0.7 ? 'authenticity-fill-high' : score >= 0.4 ? 'authenticity-fill-medium' : 'authenticity-fill-low');
+    document.getElementById('authenticity-score-value').textContent = scorePct + '%';
+
+    // Manipulation indicators
+    var indicatorsList = document.getElementById('manipulation-indicators-list');
+    indicatorsList.innerHTML = '';
+    var indicators = data.manipulation_indicators || [];
+    if (indicators.length === 0) {
+      indicatorsList.innerHTML = '<p style="color:var(--color-muted)">No manipulation indicators found.</p>';
+    } else {
+      indicators.forEach(function (ind) {
+        var card = document.createElement('div');
+        card.className = 'indicator-card';
+        var confPct = Math.round((ind.confidence || 0) * 100);
+        card.innerHTML =
+          '<div class="indicator-type">' + escapeHtml(ind.type || 'unknown') + '</div>' +
+          '<div class="indicator-desc">' + escapeHtml(ind.description || '') + '</div>' +
+          '<div class="indicator-confidence">' +
+            '<span>Confidence:</span>' +
+            '<div class="bar-track"><div class="bar-fill" style="width:' + confPct + '%"></div></div>' +
+            '<span>' + confPct + '%</span>' +
+          '</div>';
+        indicatorsList.appendChild(card);
+      });
+    }
+
+    // AI generation analysis
+    var aiGenEl = document.getElementById('ai-generation-details');
+    var aiGen = data.ai_generation_analysis || {};
+    var isAiGen = aiGen.is_ai_generated === true;
+    var aiConfPct = Math.round((aiGen.confidence || 0) * 100);
+    aiGenEl.innerHTML =
+      '<span class="ai-gen-badge ' + (isAiGen ? 'ai-gen-badge-yes' : 'ai-gen-badge-no') + '">' +
+        (isAiGen ? 'AI Generated Detected' : 'Not AI Generated') +
+      '</span>' +
+      '<div class="detail-item"><strong>Confidence:</strong> ' + aiConfPct + '%</div>' +
+      '<div class="detail-item"><strong>Generator:</strong> ' + escapeHtml(aiGen.generator_hints || 'N/A') + '</div>' +
+      renderStringList('Artifacts', aiGen.artifacts_found) +
+      renderStringList('Deepfake Indicators', aiGen.deepfake_indicators);
+
+    // Visual analysis
+    var visualEl = document.getElementById('visual-analysis-details');
+    var vis = data.visual_analysis || {};
+    visualEl.innerHTML =
+      '<div class="detail-item"><strong>Text Consistency:</strong> ' + escapeHtml(vis.text_consistency || 'N/A') + '</div>' +
+      '<div class="detail-item"><strong>Font Analysis:</strong> ' + escapeHtml(vis.font_analysis || 'N/A') + '</div>' +
+      '<div class="detail-item"><strong>Layout Anomalies:</strong> ' + escapeHtml(vis.layout_anomalies || 'N/A') + '</div>' +
+      '<div class="detail-item"><strong>Pixel Artifacts:</strong> ' + escapeHtml(vis.pixel_artifacts || 'N/A') + '</div>' +
+      '<div class="detail-item"><strong>Lighting:</strong> ' + escapeHtml(vis.lighting_consistency || 'N/A') + '</div>';
+
+    // Context analysis
+    var ctxEl = document.getElementById('context-analysis-details');
+    var ctx = data.context_analysis || {};
+    ctxEl.innerHTML =
+      '<div class="detail-item"><strong>Platform:</strong> ' + escapeHtml(ctx.platform_identified || 'UNKNOWN') + '</div>' +
+      '<div class="detail-item"><strong>Expected vs Actual:</strong> ' + escapeHtml(ctx.expected_vs_actual || 'N/A') + '</div>' +
+      renderStringList('Suspicious Patterns', ctx.suspicious_patterns);
+
+    // Metadata analysis
+    var metaEl = document.getElementById('metadata-analysis-details');
+    var meta = data.metadata_analysis || {};
+    if (meta.exif_present) {
+      metaEl.innerHTML =
+        '<div class="detail-item"><strong>EXIF Present:</strong> Yes</div>' +
+        (meta.editing_software_detected
+          ? '<div class="detail-item"><strong>Editing Software:</strong> ' + escapeHtml(meta.editing_software_detected) + '</div>'
+          : '') +
+        renderStringList('Anomalies', meta.metadata_anomalies);
+    } else {
+      metaEl.innerHTML =
+        '<p class="metadata-note">No EXIF metadata available (common for screenshots and messaging apps). ' +
+        'Analysis based on visual inspection only.</p>' +
+        renderStringList('Notes', meta.metadata_anomalies);
+    }
+
+    // Summary
+    document.getElementById('image-analysis-summary').textContent = data.summary || '';
+  }
+
+  function renderStringList(title, items) {
+    if (!items || items.length === 0) return '';
+    var html = '<div class="detail-item"><strong>' + escapeHtml(title) + ':</strong></div><ul>';
+    items.forEach(function (item) {
+      html += '<li>' + escapeHtml(String(item)) + '</li>';
+    });
+    html += '</ul>';
+    return html;
+  }
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
   // -- UI helpers -----------------------------------------------------------
   function setLoading(isLoading) {
     loadingEl.classList.toggle('hidden', !isLoading);
@@ -274,7 +417,7 @@
 
   function hideAllResults() {
     resultsSection.classList.add('hidden');
-    [resultClassify, resultAnalyze, resultGuidance, resultSentiment, resultError].forEach(function (el) {
+    [resultClassify, resultAnalyze, resultGuidance, resultSentiment, resultImageAnalysis, resultError].forEach(function (el) {
       if (el) el.classList.add('hidden');
     });
     feedbackWidget.classList.add('hidden');

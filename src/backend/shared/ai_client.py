@@ -124,6 +124,64 @@ class AzureAIClient:
         )
         return response.choices[0].message.content
 
+    def chat_with_image(
+        self,
+        system_prompt: str,
+        user_message: str,
+        image_base64: str,
+        image_media_type: str = "image/png",
+        max_tokens: int = 2048,
+        temperature: float = _DEFAULT_TEMPERATURE,
+    ) -> str:
+        """
+        Send a chat completion request with an image and return the model's reply.
+
+        Parameters
+        ----------
+        system_prompt:
+            Instructions that set the behaviour / persona of the model.
+        user_message:
+            The user-supplied text context for the image.
+        image_base64:
+            Raw base64-encoded image data (no data URI prefix).
+        image_media_type:
+            MIME type of the image, e.g. "image/png", "image/jpeg".
+        max_tokens:
+            Maximum number of tokens in the response.
+        temperature:
+            Sampling temperature (lower = more deterministic).
+
+        Returns
+        -------
+        str
+            The content of the first choice returned by the model.
+        """
+        if self._provider == "mock":
+            return self._mock_response(system_prompt)
+
+        response = self._client.chat.completions.create(
+            model=self._model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": user_message},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{image_media_type};base64,{image_base64}",
+                                "detail": "high",
+                            },
+                        },
+                    ],
+                },
+            ],
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+        return response.choices[0].message.content
+
     def _mock_response(self, system_prompt: str) -> str:
         prompt = system_prompt.lower()
         if "red_flags" in prompt and "persuasion_techniques" in prompt:
@@ -139,9 +197,64 @@ class AzureAIClient:
             return json.dumps(
                 {
                     "immediate_actions": ["Do not click any links"],
-                    "reporting_steps": ["Report to local fraud authority"],
+                    "reporting_steps": ["Report to Scamwatch (scamwatch.gov.au)"],
                     "prevention_tips": ["Verify sender identity through official channels"],
-                    "resources": ["https://www.actionfraud.police.uk/"],
+                    "resources": ["https://www.scamwatch.gov.au/"],
+                }
+            )
+        if "sentiment" in prompt or "manipulation" in prompt and "emotion" in prompt:
+            return json.dumps(
+                {
+                    "sentiment": {
+                        "primary_emotion": "urgency",
+                        "emotion_scores": {"fear": 0.7, "urgency": 0.9, "greed": 0.1, "trust": 0.1, "curiosity": 0.2},
+                        "overall_tone": "threatening",
+                    },
+                    "manipulation": {
+                        "techniques_detected": ["Authority", "Scarcity"],
+                        "pressure_score": 0.8,
+                        "urgency_indicators": ["Act now", "Limited time"],
+                        "authority_claims": ["Official notice"],
+                        "emotional_triggers": ["Fear of loss"],
+                    },
+                    "language_analysis": {
+                        "formality_level": "formal",
+                        "grammar_quality": "moderate",
+                        "suspicious_phrases": ["Act immediately", "Your account will be closed"],
+                        "call_to_action": "Click the link to verify",
+                    },
+                    "risk_assessment": "HIGH",
+                    "summary": "Mock sentiment analysis result.",
+                }
+            )
+        if "authenticity_score" in prompt or "manipulation_indicators" in prompt:
+            return json.dumps(
+                {
+                    "authenticity_score": 0.6,
+                    "verdict": "LIKELY_MANIPULATED",
+                    "manipulation_indicators": [
+                        {"type": "text_editing", "description": "Font inconsistency detected", "confidence": 0.7}
+                    ],
+                    "visual_analysis": {
+                        "text_consistency": "Minor font size variation detected",
+                        "font_analysis": "Mixed font rendering",
+                        "layout_anomalies": "None detected",
+                        "pixel_artifacts": "Compression artifacts around text region",
+                        "lighting_consistency": "Consistent",
+                    },
+                    "ai_generation_analysis": {
+                        "is_ai_generated": False,
+                        "confidence": 0.1,
+                        "generator_hints": "UNKNOWN",
+                        "artifacts_found": [],
+                        "deepfake_indicators": [],
+                    },
+                    "context_analysis": {
+                        "platform_identified": "WhatsApp",
+                        "expected_vs_actual": "UI elements mostly consistent",
+                        "suspicious_patterns": ["Edited amount region"],
+                    },
+                    "summary": "Mock image analysis result.",
                 }
             )
         return json.dumps(
