@@ -16,7 +16,7 @@ class TestHealthEndpoint(unittest.TestCase):
     def test_health_returns_ok(self):
         """Health endpoint should return 200 with status=ok."""
         import azure.functions as func
-        from blueprints.http_api import health
+        from function_app import health
 
         req = func.HttpRequest(
             method="GET",
@@ -47,7 +47,7 @@ class TestClassifyEndpoint(unittest.TestCase):
 
     def test_missing_text_returns_400(self):
         """Request without 'text' should return 400."""
-        from blueprints.http_api import classify_scam
+        from function_app import classify_scam
 
         req = self._make_request({})
         response = classify_scam(req)
@@ -57,16 +57,16 @@ class TestClassifyEndpoint(unittest.TestCase):
 
     def test_empty_text_returns_400(self):
         """Request with empty 'text' should return 400."""
-        from blueprints.http_api import classify_scam
+        from function_app import classify_scam
 
         req = self._make_request({"text": "   "})
         response = classify_scam(req)
         self.assertEqual(response.status_code, 400)
 
-    @patch("blueprints.http_api.AzureAIClient")
+    @patch("function_app.AzureAIClient")
     def test_valid_request_returns_classification(self, MockClient):
         """Valid request should return classification JSON from the AI model."""
-        from blueprints.http_api import classify_scam
+        from function_app import classify_scam
 
         mock_instance = MagicMock()
         mock_instance.chat.return_value = json.dumps(
@@ -82,10 +82,10 @@ class TestClassifyEndpoint(unittest.TestCase):
         self.assertEqual(body["classification"], "SCAM")
         self.assertAlmostEqual(body["confidence"], 0.97)
 
-    @patch("blueprints.http_api.AzureAIClient")
+    @patch("function_app.AzureAIClient")
     def test_non_json_model_response_returns_unknown(self, MockClient):
         """If the model returns non-JSON, classification should be UNKNOWN."""
-        from blueprints.http_api import classify_scam
+        from function_app import classify_scam
 
         mock_instance = MagicMock()
         mock_instance.chat.return_value = "This looks like a scam."
@@ -101,7 +101,7 @@ class TestClassifyEndpoint(unittest.TestCase):
     def test_invalid_json_body_returns_400(self):
         """Malformed JSON in request body should return 400."""
         import azure.functions as func
-        from blueprints.http_api import classify_scam
+        from function_app import classify_scam
 
         req = func.HttpRequest(
             method="POST",
@@ -129,15 +129,15 @@ class TestAnalyzeEndpoint(unittest.TestCase):
         )
 
     def test_missing_text_returns_400(self):
-        from blueprints.http_api import analyze_message
+        from function_app import analyze_message
 
         req = self._make_request({})
         response = analyze_message(req)
         self.assertEqual(response.status_code, 400)
 
-    @patch("blueprints.http_api.AzureAIClient")
+    @patch("function_app.AzureAIClient")
     def test_valid_request_returns_analysis(self, MockClient):
-        from blueprints.http_api import analyze_message
+        from function_app import analyze_message
 
         expected = {
             "red_flags": ["Urgency"],
@@ -173,15 +173,15 @@ class TestGuidanceEndpoint(unittest.TestCase):
         )
 
     def test_missing_text_returns_400(self):
-        from blueprints.http_api import safety_guidance
+        from function_app import safety_guidance
 
         req = self._make_request({})
         response = safety_guidance(req)
         self.assertEqual(response.status_code, 400)
 
-    @patch("blueprints.http_api.AzureAIClient")
+    @patch("function_app.AzureAIClient")
     def test_valid_request_returns_guidance(self, MockClient):
-        from blueprints.http_api import safety_guidance
+        from function_app import safety_guidance
 
         expected = {
             "immediate_actions": ["Do not click links"],

@@ -141,7 +141,81 @@ The system uses a **centralized prompt configuration** to enable rapid iteration
 
 See [CONTRIBUTING.md](CONTRIBUTING.md#ai-prompt-management) for detailed editing guidelines.
 
+## Unified Chat Interface & Agent Orchestration
+
+The system features a **conversational chat interface** inspired by the proven UX of `have_I_been_scammed`, eliminating the friction of explicit mode selection:
+
+**Frontend Experience**:
+- **Unified chat window**: Natural conversation flow with message bubbles
+- **Multimodal drag-and-drop**: Drop screenshots anywhere in the chat area (not restricted to file upload zones)
+- **Clipboard paste support**: Paste images directly from clipboard into message input
+- **No mode selection required**: System intelligently routes to appropriate analysis
+- **Backward compatibility**: "Advanced" tab preserves legacy explicit mode selection for power users
+
+**Backend Agent Architecture**:
+- **OrchestratorAgent**: Deterministic routing based on input patterns
+  - Greetings ("hello", "hi", "help") → ReceptionistAgent
+  - URL patterns → URLAnalyzerAgent
+  - Suspicious content → ClassifierAgent → TextAnalyzerAgent → GuidanceAgent (chain)
+  - Ambiguous input → ReceptionistAgent for clarification
+- **ReceptionistAgent**: Conversational empathy layer, provides professional customer service tone, gathers context (location, role) optionally
+- **Specialist agents**: ClassifierAgent, TextAnalyzerAgent, URLAnalyzerAgent, ReportGeneratorAgent, ResourceAssistantAgent
+- **RecordKeeperAgent**: Cross-team persistence via Cosmos DB, exposed as MCP tool
+
+**Key Contracts**:
+- `AgentRequest`: Standardized input (text, images[], session_context{})
+- `AgentResponse`: Standardized output (message, data{}, agent_used, trace{})
+- `AgentContext`: Session state (session_id, user_location, user_role, conversation_history[])
+- `OrchestrationTrace`: Logging/debugging metadata (route_path, duration_ms)
+
+**Routing Example**:
+```python
+User: "Is this a scam? [screenshot of suspicious email]"
+→ OrchestratorAgent detects suspicious content pattern
+→ Routes to ClassifierAgent (risk_score: HIGH)
+→ Auto-chains to TextAnalyzerAgent (red_flags: urgency, threats)
+→ Auto-chains to GuidanceAgent (immediate_actions, reporting_steps)
+→ Returns conversational response: "This is a high-risk scam attempt. Here's what to do immediately..."
+```
+
+See [architecture_v3.mmd](architecture_v3.mmd) for the complete visual architecture.
+
 ## API Endpoints
+
+### `POST /api/chat` (NEW - Unified Endpoint)
+Conversational endpoint with intelligent agent routing. Accepts text and images in natural language format.
+
+**Request**
+```json
+{
+  "message": "<user text>",
+  "images": ["<base64_string>"],  // optional
+  "session_id": "<uuid>",
+  "context": {
+    "location": "<optional>",
+    "role": "<optional>",
+    "conversation_history": []
+  }
+}
+```
+**Response**
+```json
+{
+  "message": "<conversational response>",
+  "data": {
+    "classification": "SCAM",
+    "red_flags": [...],
+    "guidance": {...}
+  },
+  "agent_used": "orchestrator",
+  "trace": {
+    "route_path": ["orchestrator", "classifier", "analyzer", "guidance"],
+    "duration_ms": 1234
+  }
+}
+```
+
+---
 
 ### `POST /api/classify`
 Quickly classifies a message as `SCAM`, `LIKELY_SCAM`, `SUSPICIOUS`, or `SAFE`.
