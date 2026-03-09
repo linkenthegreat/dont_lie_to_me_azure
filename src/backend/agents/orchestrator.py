@@ -233,21 +233,21 @@ class OrchestratorAgent:
                     ),
                 )
 
-                # Check URL (with safety fallback if url_checker unavailable)
-                if not self.url_checker:
-                    return AgentResponse(
-                        message=f"I detected a URL in your message: {url_match}\n\nUnfortunately, I'm currently unable to perform a security check on this URL due to technical limitations. **Please exercise caution** and verify the URL is legitimate before visiting it.",
-                        data={"url": url_match, "verdict": "UNABLE_TO_CHECK"},
-                        agent_used="url_analyzer",
-                        trace=OrchestrationTrace(
-                            route_path=["orchestrator", "url_analyzer"],
-                            routing_decision="URL detector unavailable",
-                            duration_ms=0,
-                            fallback_triggered=True,
-                        ),
-                    )
+            # Check URL (with safety fallback if url_checker unavailable)
+            if not self.url_checker:
+                return AgentResponse(
+                    message=f"I detected a URL in your message: {url_match}\n\nUnfortunately, I'm currently unable to perform a security check on this URL due to technical limitations. **Please exercise caution** and verify the URL is legitimate before visiting it.",
+                    data={"url": url_match, "verdict": "UNABLE_TO_CHECK"},
+                    agent_used="url_analyzer",
+                    trace=OrchestrationTrace(
+                        route_path=["orchestrator", "url_analyzer"],
+                        routing_decision="URL detector unavailable",
+                        duration_ms=0,
+                        fallback_triggered=True,
+                    ),
+                )
             
-                result = self.url_checker.check_url(url_match)
+            result = self.url_checker.check_url(url_match)
 
             # Format conversational response
             if result.verdict == "THREAT_DETECTED":

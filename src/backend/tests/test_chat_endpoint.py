@@ -12,7 +12,7 @@ from unittest.mock import patch, MagicMock
 @pytest.fixture
 def mock_ai_client():
     """Mock AI client to avoid real API calls."""
-    with patch("agents.receptionist.AzureAIClient") as mock_client_class:
+    with patch("shared.ai_client.AzureAIClient") as mock_client_class:
         mock_instance = MagicMock()
         mock_instance.chat.return_value = "Hello! I'm here to help you check for scams."
         mock_client_class.return_value = mock_instance
@@ -42,7 +42,6 @@ class TestChatEndpoint:
     def test_chat_greeting_returns_conversational_response(self, mock_ai_client):
         """Test that greeting message gets conversational response."""
         # Import here to apply mocks
-        from function_app import app
         import azure.functions as func
 
         # Create request
@@ -59,7 +58,9 @@ class TestChatEndpoint:
         )
 
         # Execute
-        response = app.get_functions()[0].get_user_function()(req)
+        # Import chat function directly (app.get_functions()[0] was returning health, not chat)
+        from function_app import chat
+        response = chat(req)
 
         # Verify
         assert response.status_code == 200
@@ -73,7 +74,6 @@ class TestChatEndpoint:
 
     def test_chat_url_triggers_url_analysis(self, mock_url_checker):
         """Test that URL message triggers URL analysis."""
-        from function_app import app
         import azure.functions as func
 
         req_body = {
@@ -88,7 +88,8 @@ class TestChatEndpoint:
             headers={"Content-Type": "application/json"},
         )
 
-        response = app.get_functions()[0].get_user_function()(req)
+        from function_app import chat
+        response = chat(req)
 
         assert response.status_code == 200
         data = json.loads(response.get_body())
@@ -99,7 +100,6 @@ class TestChatEndpoint:
 
     def test_chat_requires_message_field(self):
         """Test that endpoint validates required fields."""
-        from function_app import app
         import azure.functions as func
 
         req_body = {
@@ -114,7 +114,8 @@ class TestChatEndpoint:
             headers={"Content-Type": "application/json"},
         )
 
-        response = app.get_functions()[0].get_user_function()(req)
+        from function_app import chat
+        response = chat(req)
 
         assert response.status_code == 400
         data = json.loads(response.get_body())
@@ -122,7 +123,6 @@ class TestChatEndpoint:
 
     def test_chat_generates_session_id_if_missing(self, mock_ai_client):
         """Test that endpoint generates session ID if not provided."""
-        from function_app import app
         import azure.functions as func
 
         req_body = {
@@ -137,7 +137,8 @@ class TestChatEndpoint:
             headers={"Content-Type": "application/json"},
         )
 
-        response = app.get_functions()[0].get_user_function()(req)
+        from function_app import chat
+        response = chat(req)
 
         assert response.status_code == 200
         data = json.loads(response.get_body())
@@ -147,7 +148,6 @@ class TestChatEndpoint:
 
     def test_chat_accepts_multimodal_input(self, mock_ai_client):
         """Test that endpoint accepts images along with text."""
-        from function_app import app
         import azure.functions as func
 
         req_body = {
@@ -163,7 +163,8 @@ class TestChatEndpoint:
             headers={"Content-Type": "application/json"},
         )
 
-        response = app.get_functions()[0].get_user_function()(req)
+        from function_app import chat
+        response = chat(req)
 
         assert response.status_code == 200
         data = json.loads(response.get_body())
@@ -171,7 +172,6 @@ class TestChatEndpoint:
 
     def test_chat_includes_trace_metadata(self, mock_ai_client):
         """Test that response includes routing trace for observability."""
-        from function_app import app
         import azure.functions as func
 
         req_body = {
@@ -186,7 +186,8 @@ class TestChatEndpoint:
             headers={"Content-Type": "application/json"},
         )
 
-        response = app.get_functions()[0].get_user_function()(req)
+        from function_app import chat
+        response = chat(req)
 
         assert response.status_code == 200
         data = json.loads(response.get_body())
