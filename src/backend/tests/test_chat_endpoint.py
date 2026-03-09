@@ -12,7 +12,7 @@ from unittest.mock import patch, MagicMock
 @pytest.fixture
 def mock_ai_client():
     """Mock AI client to avoid real API calls."""
-    with patch("shared.ai_client.AzureAIClient") as mock_client_class:
+    with patch("agents.orchestrator.AzureAIClient") as mock_client_class:
         mock_instance = MagicMock()
         mock_instance.chat.return_value = "Hello! I'm here to help you check for scams."
         mock_client_class.return_value = mock_instance
@@ -72,7 +72,7 @@ class TestChatEndpoint:
         assert data["agent_used"] == "receptionist"
         assert "receptionist" in data["trace"]["route_path"]
 
-    def test_chat_url_triggers_url_analysis(self, mock_url_checker):
+    def test_chat_url_triggers_url_analysis(self, mock_url_checker, mock_ai_client):
         """Test that URL message triggers URL analysis."""
         import azure.functions as func
 
