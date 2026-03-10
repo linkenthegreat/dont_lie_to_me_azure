@@ -38,8 +38,8 @@ resource existingCosmos 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' exist
   name: cosmosAccountName
 }
 
-var redisConnectionString = empty(redisCacheName) ? '' : '${redisCacheName}.redis.cache.windows.net:6380,password=${existingRedis.listKeys().primaryKey},ssl=True,abortConnect=False'
-var cosmosConnectionString = empty(cosmosAccountName) ? '' : existingCosmos.listConnectionStrings().connectionStrings[0].connectionString
+var redisConnectionString = empty(redisCacheName) ? '' : '${redisCacheName}.redis.cache.windows.net:6380,password=${existingRedis!.listKeys().primaryKey},ssl=True,abortConnect=False'
+var cosmosConnectionString = empty(cosmosAccountName) ? '' : existingCosmos!.listConnectionStrings().connectionStrings[0].connectionString
 
 // -- Application Insights ---------------------------------------------------
 resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
