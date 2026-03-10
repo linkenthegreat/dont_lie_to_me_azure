@@ -1,0 +1,133 @@
+@inject IConversationStorageService Storage
+
+<div class="drawer-overlay @(IsOpen ? "drawer-overlay--visible" : "")" @onclick="Close"></div>
+
+<aside class="drawer @(IsOpen ? "drawer--open" : "")" aria-label="Chat history">
+    <div class="drawer__header">
+        <h2>Recent Chats</h2>
+        <button class="drawer__close" @onclick="Close" aria-label="Close history">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+    </div>
+
+    <div class="drawer__body">
+        @if (_loading)
+        {
+            <div class="drawer__loading">
+                <div class="typing">
+                    <div class="typing__dot"></div>
+                    <div class="typing__dot"></div>
+                    <div class="typing__dot"></div>
+                </div>
+            </div>
+        }
+        else if (_conversations.Count == 0)
+        {
+            <div class="drawer__empty">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--gray-300)" stroke-width="1.5">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <p>No history yet</p>
+                <span>Your recent conversations will appear here</span>
+            </div>
+        }
+        else
+        {
+            <ul class="drawer__list">
+                @foreach (var conv in _conversations)
+                {
+                    <li class="history-item @(conv.Id == ActiveConversationId ? "history-item--active" : "")"
+                        @onclick="() => SelectConversation(conv.Id)">
+                        <div class="history-item__icon">
+                            @("\U0001F4AC")
+                        </div>
+                        <div class="history-item__content">
+                            <span class="history-item__text">@conv.Title</span>
+                            <div class="history-item__meta">
+                                <span class="history-item__endpoint">@conv.Messages.Count messages</span>
+                                <span class="history-item__time">@FormatTime(conv.UpdatedAt)</span>
+                            </div>
+                        </div>
+                        <button class="history-item__delete" @onclick="() => DeleteConversation(conv.Id)" @onclick:stopPropagation="true" aria-label="Delete conversation" title="Delete">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                <path d="M10 11v6"/>
+                                <path d="M14 11v6"/>
+                                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                            </svg>
+                        </button>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</aside>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public string? ActiveConversationId { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<string> OnSelectConversation { get; set; }
+    [Parameter] public EventCallback OnDeleteActive { get; set; }
+
+    private List<Conversation> _conversations = new();
+    private bool _loading;
+    private bool _lastOpen;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && !_lastOpen)
+        {
+            await LoadConversations();
+        }
+        _lastOpen = IsOpen;
+    }
+
+    private async Task LoadConversations()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        _conversations = await Storage.GetConversationsAsync();
+        _conversations = _conversations.OrderByDescending(c => c.UpdatedAt).ToList();
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task SelectConversation(string id)
+    {
+        await OnSelectConversation.InvokeAsync(id);
+        await Close();
+    }
+
+    private async Task DeleteConversation(string id)
+    {
+        await Storage.DeleteConversationAsync(id);
+        _conversations.RemoveAll(c => c.Id == id);
+
+        if (id == ActiveConversationId)
+            await OnDeleteActive.InvokeAsync();
+
+        StateHasChanged();
+    }
+
+    private async Task Close()
+    {
+        await OnClose.InvokeAsync();
+    }
+
+    private static string FormatTime(DateTime dt)
+    {
+        var diff = DateTime.UtcNow - dt;
+        if (diff.TotalMinutes < 1) return "just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}d ago";
+        return dt.ToString("MMM d");
+    }
+}

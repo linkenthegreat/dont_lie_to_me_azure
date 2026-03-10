@@ -11,6 +11,7 @@ public class AppState
     public List<string> CurrentImages { get; private set; } = new();
     public bool IsLoading { get; private set; }
     public string? ErrorMessage { get; private set; }
+    public string CurrentConversationId { get; private set; } = Guid.NewGuid().ToString();
 
     public event Action? OnChange;
 
@@ -84,6 +85,46 @@ public class AppState
     public void SetError(string? error)
     {
         ErrorMessage = error;
+        NotifyStateChanged();
+    }
+
+    public void StartNewConversation()
+    {
+        Messages.Clear();
+        ClearImages();
+        ClearError();
+        CurrentConversationId = Guid.NewGuid().ToString();
+        NotifyStateChanged();
+    }
+
+    public void LoadConversation(Conversation conversation)
+    {
+        CurrentConversationId = conversation.Id;
+        Messages = new List<ChatMessage>(conversation.Messages);
+        ClearImages();
+        ClearError();
+        NotifyStateChanged();
+    }
+
+    public Conversation ToConversation()
+    {
+        var title = Messages.FirstOrDefault(m => m.Role == "user")?.Content ?? "New conversation";
+        if (title.Length > 60) title = title[..60] + "...";
+
+        return new Conversation
+        {
+            Id = CurrentConversationId,
+            Title = title,
+            Messages = new List<ChatMessage>(Messages),
+            UpdatedAt = DateTime.UtcNow
+        };
+    }
+
+    public void ClearMessages()
+    {
+        Messages.Clear();
+        ClearImages();
+        ClearError();
         NotifyStateChanged();
     }
 

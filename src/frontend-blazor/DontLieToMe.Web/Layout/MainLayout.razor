@@ -1,15 +1,36 @@
 @inherits LayoutComponentBase
+@inject AppState State
+@inject IConversationStorageService ConversationStorage
 
 <div class="app-shell">
     <header class="app-header">
         <div class="header-brand">
+            <button class="header-btn" @onclick="ToggleHistory" aria-label="Menu" title="Menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+            </button>
             <img src="icon-192.png" alt="DLM" class="header-logo" />
             <div class="header-text">
                 <h1>Don't Lie To Me</h1>
                 <span>Scammer Detector</span>
             </div>
         </div>
+        <button class="header-btn" @onclick="NewConversation" aria-label="New conversation" title="New conversation">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+        </button>
     </header>
+
+    <HistoryDrawer IsOpen="@_historyOpen"
+                   ActiveConversationId="@State.CurrentConversationId"
+                   OnClose="CloseHistory"
+                   OnSelectConversation="LoadConversation"
+                   OnDeleteActive="HandleDeleteActive" />
 
     <main class="app-main">
         @Body
@@ -19,3 +40,37 @@
         <span>Powered by Azure AI Foundry & Azure Functions</span>
     </footer>
 </div>
+
+@code {
+    private bool _historyOpen;
+
+    private void ToggleHistory() => _historyOpen = !_historyOpen;
+    private void CloseHistory() => _historyOpen = false;
+
+    private async Task NewConversation()
+    {
+        await SaveCurrentConversation();
+        State.StartNewConversation();
+    }
+
+    private async Task LoadConversation(string conversationId)
+    {
+        await SaveCurrentConversation();
+        var conversation = await ConversationStorage.GetConversationAsync(conversationId);
+        if (conversation is not null)
+            State.LoadConversation(conversation);
+    }
+
+    private void HandleDeleteActive()
+    {
+        State.StartNewConversation();
+    }
+
+    private async Task SaveCurrentConversation()
+    {
+        if (State.Messages.Count > 0)
+        {
+            await ConversationStorage.SaveConversationAsync(State.ToConversation());
+        }
+    }
+}

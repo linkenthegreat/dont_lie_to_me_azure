@@ -10,10 +10,17 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 var apiBase = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:7071/api";
+var useMock = builder.Configuration["UseMockApi"] ?? "true";
+
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiBase) });
 
-builder.Services.AddScoped<IApiClient, ApiClient>();
+if (useMock == "true")
+    builder.Services.AddScoped<IApiClient, MockApiClient>();
+else
+    builder.Services.AddScoped<IApiClient, ApiClient>();
+
 builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddScoped<IConversationStorageService, ConversationStorageService>();
 builder.Services.AddScoped<AppState>();
 builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddFluentUIComponents();
