@@ -36,6 +36,12 @@ Thumbs.db
 # Logs
 *.log
 
+# .NET
+bin/
+obj/
+*.user
+*.suo
+
 # Claude Code
 .claude/
 
