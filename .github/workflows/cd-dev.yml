@@ -91,6 +91,7 @@ jobs:
 
   validate-deployment:
     runs-on: ubuntu-latest
+    environment: dev
     needs: deploy
     steps:
       - name: Checkout

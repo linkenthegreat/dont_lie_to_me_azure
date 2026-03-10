@@ -134,6 +134,7 @@ jobs:
 
   validate-infrastructure:
     runs-on: ubuntu-latest
+    environment: production
     needs: swap-to-production
     steps:
       - name: Checkout
