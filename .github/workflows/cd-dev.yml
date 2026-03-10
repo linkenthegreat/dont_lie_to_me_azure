@@ -75,6 +75,7 @@ jobs:
       - name: Deploy infrastructure (Bicep)
         run: |
           az deployment sub create \
+            --name "main-${AZURE_LOCATION}-${ENVIRONMENT_NAME}" \
             --location $AZURE_LOCATION \
             --template-file infra/main.bicep \
             --parameters environmentName=$ENVIRONMENT_NAME location=$AZURE_LOCATION aiDeploymentName=gpt-4o

@@ -27,5 +27,4 @@ resource redisCache 'Microsoft.Cache/redis@2023-08-01' = {
 }
 
 output redisHostName string = redisCache.properties.hostName
-output redisConnectionString string = '${redisCacheName}.redis.cache.windows.net:6380,password=${redisCache.listKeys().primaryKey},ssl=True,abortConnect=False'
 output redisCacheName string = redisCache.name

@@ -6,9 +6,6 @@
 @description('Short environment name.')
 param environmentName string
 
-@description('Application Insights resource ID.')
-param appInsightsId string
-
 @description('Function App resource ID.')
 param functionAppId string
 
