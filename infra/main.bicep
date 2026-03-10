@@ -4,7 +4,7 @@
 
   Deploy with:
     az deployment sub create \
-      --location eastus \
+      --location australiaeast \
       --template-file infra/main.bicep \
       --parameters environmentName=dev aiDeploymentName=gpt-4o
 
