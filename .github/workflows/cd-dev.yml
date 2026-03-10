@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  AZURE_LOCATION: eastus
+  AZURE_LOCATION: australiaeast
   ENVIRONMENT_NAME: dev
 
 jobs:
@@ -65,10 +65,11 @@ jobs:
           if az group exists --name "$RG_NAME" | grep -qi true; then
             ACTUAL_LOCATION=$(az group show --name "$RG_NAME" --query location -o tsv)
             if [ "$ACTUAL_LOCATION" != "$AZURE_LOCATION" ]; then
-              echo "Resource group '$RG_NAME' already exists in '$ACTUAL_LOCATION'."
-              echo "Azure resource group location is immutable."
-              echo "Use a new environment/resource group name or recreate the resource group in '$AZURE_LOCATION'."
-              exit 1
+              echo "WARNING: Resource group '$RG_NAME' exists in '$ACTUAL_LOCATION' but target location is '$AZURE_LOCATION'."
+              echo "Azure resource group location is immutable — the resource group must be recreated."
+              echo "Deleting '$RG_NAME' from '$ACTUAL_LOCATION' so it can be recreated in '$AZURE_LOCATION'..."
+              az group delete --name "$RG_NAME" --yes
+              echo "Deletion initiated. The deployment step will recreate it in '$AZURE_LOCATION'."
             fi
           fi
 

@@ -133,7 +133,7 @@ curl -X POST http://localhost:7071/api/guidance \
 ```bash
 az login
 az deployment sub create \
-  --location eastus \
+  --location australiaeast \
   --template-file infra/main.bicep \
   --parameters environmentName=dev aiDeploymentName=gpt-4o
 ```
