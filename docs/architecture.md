@@ -1,123 +1,81 @@
 # Architecture Overview
 
-## System Diagram (v3.1)
+## System Diagram (v5.0)
 
-```mermaid
-flowchart TB
-    subgraph Client["🌐 Client Layer"]
-        Browser["Browser<br/><small>HTML / CSS / JS</small>"]
-    end
+See the full Mermaid diagram: [architecture_v5.mmd](architecture_v5.mmd)
 
-    subgraph FrontDoor["Azure Front Door"]
-        CDN["CDN + WAF<br/><small>Global load balancing</small>"]
-    end
-
-    subgraph Functions["Azure Functions (Python v2)"]
-        direction TB
-        subgraph CoreAPI["Core Analysis Endpoints"]
-            classify["POST /classify"]
-            analyze["POST /analyze"]
-            guidance["POST /guidance"]
-            sentiment["POST /sentiment"]
-            analyzeimg["POST /analyze-image"]
-            checkurl["POST /check-url"]
-            health["GET /health"]
-        end
-        subgraph DataAPI["Data & Compliance Endpoints"]
-            history["GET /history"]
-            export["GET /export"]
-            feedback["POST /feedback"]
-            i18n["GET /i18n"]
-            gdpr_del["DELETE /gdpr/delete"]
-            gdpr_exp["GET /gdpr/export"]
-            teams["POST /notify-teams"]
-        end
-        subgraph Internals["Shared Modules"]
-            prompts["prompts.yaml + shared/prompts.py"]
-            ai_client["shared/ai_client.py"]
-            url_checker["shared/url_checker.py"]
-            models["shared/models.py"]
-            risk["shared/risk_hints.py"]
-            threat["shared/threat_intel_sources.py"]
-        end
-        subgraph Services["Service Layer"]
-            cache_svc["cache_service.py"]
-            cosmos_svc["cosmos_service.py"]
-            telemetry_svc["telemetry.py"]
-            sentiment_svc["sentiment_service.py"]
-            image_svc["image_analysis_service.py"]
-            export_svc["export_service.py"]
-            gdpr_svc["gdpr_service.py"]
-            audit_svc["audit_logger.py"]
-            teams_svc["teams_integration.py"]
-        end
-        subgraph ImagePipeline["Image Forensics Pipeline"]
-            pillow["Pillow<br/><small>Resize / EXIF / Format</small>"]
-            gpt4v["GPT-4o Vision<br/><small>Multimodal analysis</small>"]
-        end
-        cleanup["⏰ Timer: cleanup_expired_data<br/><small>Weekly @ 3 AM Sunday</small>"]
-    end
-
-    subgraph Azure["Azure Platform Services"]
-        AI["Azure AI Foundry<br/><small>GPT-4o / GPT-4o-mini</small>"]
-        KV["Azure Key Vault<br/><small>Secrets & keys</small>"]
-        Cosmos["Azure Cosmos DB<br/><small>Analysis history</small>"]
-        Redis["Azure Cache for Redis<br/><small>Response caching</small>"]
-        AppInsights["Application Insights<br/><small>Telemetry & monitoring</small>"]
-    end
-
-    subgraph External["External Integrations"]
-        Teams["Microsoft Teams<br/><small>Scam alerts webhook</small>"]
-    end
-
-    Browser -->|HTTPS / JSON| CDN
-    CDN --> Functions
-
-    CoreAPI --> ai_client
-    CoreAPI --> url_checker
-    ai_client --> prompts
-    ai_client --> AI
-    ai_client --> KV
-    url_checker --> threat
-    url_checker --> risk
-
-    analyzeimg --> image_svc
-    image_svc --> pillow
-    pillow --> gpt4v
-    gpt4v --> AI
-
-    CoreAPI --> cache_svc
-    CoreAPI --> cosmos_svc
-    CoreAPI --> telemetry_svc
-    DataAPI --> cosmos_svc
-    DataAPI --> export_svc
-    DataAPI --> gdpr_svc
-    DataAPI --> audit_svc
-    DataAPI --> teams_svc
-
-    cache_svc --> Redis
-    cosmos_svc --> Cosmos
-    telemetry_svc --> AppInsights
-    teams_svc --> Teams
-    cleanup --> cache_svc
-    classify -->|SCAM detected| teams_svc
+```
+                    ┌───────────────────────┐
+                    │   Azure Static Web    │  CDN · Auto SSL
+                    │   Apps                │  API Proxy → /api/*
+                    └──────────┬────────────┘
+                               │
+               ┌───────────────┴───────────────┐
+               │                               │
+    ┌──────────▼──────────┐         ┌──────────▼───────────┐
+    │  Blazor WASM        │         │  Azure Functions     │
+    │  .NET 8.0 Standalone│         │  Python 3.11         │
+    │                     │         │                      │
+    │  Chat-first UI:     │         │  /api/chat (primary) │
+    │  · ChatPage.razor   │ ──────► │  /api/classify       │
+    │  · DataCard.razor   │  POST   │  /api/analyze        │
+    │  · TracePanel.razor │ /chat   │  /api/guidance       │
+    │  · WelcomeMessage   │         │  /api/sentiment      │
+    │                     │         │  /api/analyze-image   │
+    │  PWA · Mobile-first │         │  /api/check-url      │
+    │  SEO · Open Graph   │         │                      │
+    └─────────────────────┘         └─────┬────────────────┘
+                                          │
+                               ┌──────────▼───────────┐
+                               │  Agent Orchestrator   │
+                               │  Deterministic routing│
+                               └──┬──┬──┬──┬──┬──┬────┘
+                                  │  │  │  │  │  │
+          ┌───────────────────────┘  │  │  │  │  └──────────┐
+          ▼          ▼               ▼  ▼  ▼               ▼
+    ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
+    │Receptionist│ │Classifier│ │Text      │ │URL       │ │Image     │
+    │Agent     │ │Agent     │ │Analyzer  │ │Analyzer  │ │Analyzer  │
+    │Empathy   │ │Triage    │ │Red flags │ │Threat    │ │Vision    │
+    │Context   │ │SCAM/SAFE │ │Persuasion│ │intel     │ │Deepfake  │
+    └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘
+                                  │
+                    ┌─────────────┴─────────────┐
+                    ▼                           ▼
+              ┌──────────┐              ┌──────────┐
+              │Report    │              │Resource  │
+              │Generator │              │Assistant │
+              │Structured│              │Location- │
+              │output    │              │aware     │
+              └──────────┘              └──────────┘
+                                  │
+             ┌────────────────────┼────────────────────┐
+             ▼                    ▼                    ▼
+       ┌──────────┐        ┌──────────┐        ┌──────────┐
+       │Azure AI  │        │Cosmos DB │        │Redis     │
+       │Foundry   │        │NoSQL     │        │Cache     │
+       │GPT-4o    │        │History   │        │30min TTL │
+       │Vision    │        │Sessions  │        │SHA-256   │
+       └──────────┘        └──────────┘        └──────────┘
 ```
 
 ## Components
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
-| Frontend | HTML5 / Vanilla JS / CSS | User interface – paste text, upload screenshots, view results |
-| Backend API | Azure Functions v2 (Python 3.11) | REST endpoints, orchestration, timer triggers |
+| Frontend | Blazor WebAssembly (.NET 8.0) | Chat-first PWA — mobile-first, SEO, Open Graph, brand design system |
+| Backend API | Azure Functions v2 (Python 3.11) | REST endpoints, agent orchestration, timer triggers |
 | AI Model | Azure AI Foundry (GPT-4o) | Text classification, analysis, guidance, multimodal vision |
-| Image Processing | Pillow (PIL) | EXIF extraction, image resize, format detection |
+| Agent Runtime | Framework-agnostic Python | Deterministic orchestration with 7+ specialist agents |
+| Image Processing | Pillow (PIL) + GPT-4o Vision | EXIF extraction, resize, manipulation/deepfake/AI detection |
 | Prompt System | `prompts.yaml` + loader | Centralized AI system prompts with fallback pattern |
 | Database | Azure Cosmos DB (NoSQL) | Analysis history, feedback, session data |
 | Cache | Azure Cache for Redis | Response caching with SHA-256 key hashing |
 | Secret management | Azure Key Vault | Securely store API keys and connection strings |
 | Telemetry | Azure Application Insights | Logging, tracing, performance monitoring |
-| CDN/WAF | Azure Front Door | Global load balancing, DDoS protection |
+| Hosting | Azure Static Web Apps | CDN, auto SSL, API proxy to Functions |
 | Infrastructure | Bicep | Repeatable, version-controlled IaC |
+| CI/CD | GitHub Actions | Backend pytest + Frontend dotnet build |
 
 ## Prompt Management Architecture
 
@@ -145,12 +103,14 @@ See [CONTRIBUTING.md](CONTRIBUTING.md#ai-prompt-management) for detailed editing
 
 The system features a **conversational chat interface** inspired by the proven UX of `have_I_been_scammed`, eliminating the friction of explicit mode selection:
 
-**Frontend Experience**:
-- **Unified chat window**: Natural conversation flow with message bubbles
-- **Multimodal drag-and-drop**: Drop screenshots anywhere in the chat area (not restricted to file upload zones)
+**Frontend Experience** (Blazor WebAssembly):
+- **Unified chat window**: Natural conversation flow with message bubbles — no mode selection
+- **Multimodal drag-and-drop**: Drop screenshots anywhere in the chat area via JS interop
 - **Clipboard paste support**: Paste images directly from clipboard into message input
-- **No mode selection required**: System intelligently routes to appropriate analysis
-- **Backward compatibility**: "Advanced" tab preserves legacy explicit mode selection for power users
+- **Polymorphic data cards**: `DataCard.razor` renders classification, URL analysis, image analysis, sentiment, and guidance results based on the agent's `data{}` response
+- **Agent trace display**: Collapsible panel showing orchestrator route path, agent used, and duration
+- **PWA**: Installable as "Scam Detector" with offline splash, manifest, and app icons
+- **Mobile-first**: Responsive design with `100dvh`, `safe-area-inset-bottom`, 44px touch targets
 
 **Backend Agent Architecture**:
 - **OrchestratorAgent**: Deterministic routing based on input patterns
@@ -178,7 +138,7 @@ User: "Is this a scam? [screenshot of suspicious email]"
 → Returns conversational response: "This is a high-risk scam attempt. Here's what to do immediately..."
 ```
 
-See [architecture_v3.mmd](architecture_v3.mmd) for the complete visual architecture.
+See [architecture_v5.mmd](architecture_v5.mmd) for the complete visual architecture.
 
 ## API Endpoints
 

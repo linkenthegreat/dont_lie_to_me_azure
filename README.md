@@ -11,6 +11,8 @@
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet" alt=".NET 8.0">
+  <img src="https://img.shields.io/badge/Blazor-WASM-512BD4?logo=blazor" alt="Blazor WASM">
   <img src="https://img.shields.io/badge/Python-3.11+-blue?logo=python" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/Azure_Functions-v2-0078D4?logo=azure-functions" alt="Azure Functions v2">
   <img src="https://img.shields.io/badge/GPT--4o-Multimodal-6b3fa0?logo=openai" alt="GPT-4o">
@@ -50,42 +52,35 @@
 
 ## Architecture
 
-### High-Level (v3.1)
+### High-Level (v5.0)
 
-See the full Mermaid diagram: [docs/architecture_v3.mmd](docs/architecture_v3.mmd)
+See the full Mermaid diagram: [docs/architecture_v5.mmd](docs/architecture_v5.mmd)
 
 ```
-                     ┌──────────────────────┐
-                     │    Azure Front Door   │  CDN / WAF / DDoS
-                     └──────────┬───────────┘
-                                │
-                     ┌──────────▼───────────┐
-                     │  Azure Static Web Apps│  Frontend / Auto SSL
-                     └──────────┬───────────┘
-                                │ API proxy
-            ┌───────────────────▼────────────────────┐
-            │      Azure Functions – Python 3.11      │
-            │                                         │
-            │  HTTP Endpoints:                        │
-            │  /classify . /analyze . /guidance        │
-            │  /sentiment . /check-url . /health       │
-            │  /analyze-image                          │
-            │                                         │
-            │  Data & Compliance:                     │
-            │  /history . /export . /feedback           │
-            │  /i18n . /gdpr . /notify-teams            │
-            │                                         │
-            │  Timer: cleanup (Weekly Sun 3AM)         │
-            └─────┬──────┬──────┬──────┬──────┬──────┘
-                  │      │      │      │      │
-     ┌────────────┘      │      │      │      └────────────┐
-     ▼                   ▼      ▼      ▼                   ▼
-┌─────────┐    ┌──────────┐ ┌──────┐ ┌──────────┐  ┌──────────┐
-│Azure AI │    │Cosmos DB │ │Redis │ │App       │  │MS Teams  │
-│Foundry  │    │NoSQL     │ │Cache │ │Insights  │  │Webhook   │
-│GPT-4o   │    │History   │ │30min │ │Telemetry │  │Alerts    │
-│Vision   │    │Feedback  │ │TTL   │ │Metrics   │  │          │
-└─────────┘    └──────────┘ └──────┘ └──────────┘  └──────────┘
+                    ┌───────────────────────┐
+                    │   Azure Static Web    │  CDN · Auto SSL
+                    │   Apps                │  API Proxy → /api/*
+                    └──────────┬────────────┘
+                               │
+               ┌───────────────┴───────────────┐
+               │                               │
+    ┌──────────▼──────────┐         ┌──────────▼───────────┐
+    │  Blazor WASM        │         │  Azure Functions     │
+    │  .NET 8.0 Standalone│         │  Python 3.11         │
+    │                     │         │                      │
+    │  Chat-first UI      │ ──────► │  /api/chat (primary) │
+    │  Mobile-first PWA   │  POST   │  Agent Orchestrator  │
+    │  Brand: #8A2BE2     │ /chat   │  7+ Specialist Agents│
+    │  SEO · Open Graph   │         │  GPT-4o · Vision     │
+    └─────────────────────┘         └─────┬────────────────┘
+                                          │
+             ┌────────────────────────────┼──────────────┐
+             ▼                            ▼              ▼
+       ┌──────────┐              ┌──────────┐     ┌──────────┐
+       │Azure AI  │              │Cosmos DB │     │Redis     │
+       │Foundry   │              │NoSQL     │     │Cache     │
+       │GPT-4o    │              │History   │     │30min TTL │
+       └──────────┘              └──────────┘     └──────────┘
 ```
 
 ### Image Forensics Pipeline
@@ -130,6 +125,39 @@ See the full Mermaid diagram: [docs/architecture_v3.mmd](docs/architecture_v3.mm
                     │  DEEPFAKE        │
                     │  INCONCLUSIVE    │
                     └──────────────────┘
+```
+
+### Frontend Structure (Blazor WASM)
+
+```
+src/frontend-blazor/DontLieToMe.Web/
+├── Program.cs                          # DI, HttpClient, service registration
+├── App.razor / _Imports.razor          # Root component, global usings
+├── Layout/
+│   └── MainLayout.razor                # Header (DLM brand) + main + footer
+├── Pages/
+│   └── ChatPage.razor                  # "/" — Unified chat interface
+├── Components/Chat/
+│   ├── ChatPanel.razor                 # Message list + input container
+│   ├── ChatInput.razor                 # Textarea + image upload + send
+│   ├── UserMessage.razor               # User message bubble (right-aligned)
+│   ├── AssistantMessage.razor          # Assistant bubble + DataCard + Trace
+│   ├── WelcomeMessage.razor            # Onboarding hints (clickable)
+│   ├── DataCard.razor                  # Polymorphic data renderer
+│   ├── TracePanel.razor                # Agent trace (route, duration)
+│   └── TypingIndicator.razor           # Animated dots
+├── Models/                             # ChatRequest, ChatResponse, etc.
+├── Services/
+│   ├── IApiClient.cs / ApiClient.cs    # HTTP client → /api/chat
+│   ├── AppState.cs                     # Reactive state (conversation, images)
+│   └── SessionService.cs              # LocalStorage persistence
+└── wwwroot/
+    ├── index.html                      # SEO, Open Graph, Twitter Cards, JSON-LD
+    ├── css/app.css                     # Design system (CSS custom properties)
+    ├── js/interop.js                   # Clipboard, drag-drop, auto-scroll
+    ├── manifest.webmanifest            # PWA: "Scam Detector"
+    ├── favicon.svg / *.png             # Brand icons (DLM Lady Justice)
+    └── og-image.png                    # Open Graph preview image
 ```
 
 ### Backend Module Structure
@@ -348,13 +376,15 @@ func start
 
 Available at `http://localhost:7071/api/`.
 
-### 4 – Open the frontend
+### 4 – Start the Blazor frontend
 
 ```bash
-cd src/frontend
-python -m http.server 8080
-# Open http://localhost:8080
+cd src/frontend-blazor/DontLieToMe.Web
+dotnet run
+# Open http://localhost:5000
 ```
+
+> **Note:** The vanilla JS frontend (`src/frontend/`) is still available as a legacy option via `python -m http.server 8080`.
 
 ### 5 – Test an endpoint
 
@@ -406,18 +436,19 @@ python -m pytest tests/ -v
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
-| Frontend | HTML5 / Vanilla JS / CSS | User interface with tab-based input, result rendering |
-| Backend API | Azure Functions v2 (Python 3.11) | HTTP endpoints, orchestration, timer triggers |
-| AI Model | Azure AI Foundry (GPT-4o) | Text classification, analysis, guidance, vision |
-| Image Processing | Pillow (PIL) | EXIF extraction, image resize, format detection |
+| Frontend | Blazor WebAssembly (.NET 8.0) | Chat-first PWA — mobile-first responsive, SEO, Open Graph |
+| Backend API | Azure Functions v2 (Python 3.11) | REST endpoints, agent orchestration, timer triggers |
+| Agent Runtime | Framework-agnostic Python | Deterministic orchestration with 7+ specialist agents |
+| AI Model | Azure AI Foundry (GPT-4o) | Text classification, analysis, guidance, multimodal vision |
+| Image Processing | Pillow (PIL) + GPT-4o Vision | EXIF extraction, resize, manipulation/deepfake/AI detection |
 | Prompt System | `prompts.yaml` + YAML loader | Centralized AI prompts with fallback pattern |
 | Database | Azure Cosmos DB (NoSQL) | Analysis history, feedback, session data |
 | Cache | Azure Cache for Redis | Response caching with SHA-256 keys |
 | Secrets | Azure Key Vault | API keys and connection strings |
-| Monitoring | Application Insights | Telemetry, metrics, alerts |
-| CDN/WAF | Azure Front Door | Global load balancing, DDoS protection |
+| Monitoring | Application Insights | Telemetry, metrics, agent traces |
+| Hosting | Azure Static Web Apps | CDN, auto SSL, API proxy to Functions |
 | Infrastructure | Bicep | Repeatable IaC templates |
-| CI/CD | GitHub Actions | Automated testing, deployment |
+| CI/CD | GitHub Actions | Backend pytest + Frontend dotnet build |
 
 ---
 
@@ -438,7 +469,7 @@ az deployment sub create \
 ## Documentation
 
 - [Architecture Overview](docs/architecture.md) – Detailed system diagram and component breakdown
-- [Architecture Diagram (Mermaid)](docs/architecture_v3.mmd) – v3.1 production architecture
+- [Architecture Diagram (Mermaid)](docs/architecture_v5.mmd) – v5.0 Blazor WASM + Agent Orchestration
 - [Setup & Deployment Guide](docs/setup.md) – Full Azure deployment walkthrough
 - [Contributing Guide](docs/CONTRIBUTING.md) – Development workflow and prompt management
 
