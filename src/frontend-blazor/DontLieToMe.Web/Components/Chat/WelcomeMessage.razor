@@ -1,0 +1,35 @@
+<div class="welcome" role="banner">
+    <img src="icon-192.png" alt="Don't Lie To Me" class="welcome__logo" />
+    <h2 class="welcome__title">Don't Lie To Me</h2>
+    <p class="welcome__subtitle">Your AI-powered scam detection assistant</p>
+
+    <div class="welcome__hints">
+        <button class="hint-card" type="button" @onclick='() => OnHintClick.InvokeAsync("I received this text: \"Your ATO refund of $2,847 is ready. Click here to claim.\"")'>
+            <span class="hint-card__icon">&#x1F4E9;</span>
+            <div class="hint-card__text">
+                <strong>Check a suspicious message</strong>
+                <span>Paste any SMS, email, or DM you're unsure about</span>
+            </div>
+        </button>
+
+        <button class="hint-card" type="button" @onclick='() => OnHintClick.InvokeAsync("Is this link safe? https://secure-banking-login.suspicious-site.com")'>
+            <span class="hint-card__icon">&#x1F517;</span>
+            <div class="hint-card__text">
+                <strong>Verify a URL</strong>
+                <span>Share a link and we'll check it for threats</span>
+            </div>
+        </button>
+
+        <button class="hint-card" type="button" @onclick='() => OnHintClick.InvokeAsync("I think I have been scammed, what should I do?")'>
+            <span class="hint-card__icon">&#x1F6E1;</span>
+            <div class="hint-card__text">
+                <strong>Get help after a scam</strong>
+                <span>Step-by-step guidance on what to do next</span>
+            </div>
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback<string> OnHintClick { get; set; }
+}

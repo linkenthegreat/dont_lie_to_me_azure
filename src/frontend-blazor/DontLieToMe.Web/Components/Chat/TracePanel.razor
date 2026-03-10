@@ -1,0 +1,36 @@
+@if (Trace is not null)
+{
+    <details class="trace">
+        <summary class="trace__summary">
+            <span style="opacity:0.6">&#x2139;</span>
+            <span>@(AgentUsed ?? "unknown") agent</span>
+            @if (Trace.DurationMs.HasValue)
+            {
+                <span class="trace__duration">@(Trace.DurationMs.Value.ToString("F0"))ms</span>
+            }
+        </summary>
+        <div class="trace__body">
+            @if (Trace.RoutePath?.Count > 0)
+            {
+                <div><strong>Route:</strong> @string.Join(" &rarr; ", Trace.RoutePath)</div>
+            }
+            @if (!string.IsNullOrEmpty(Trace.RoutingDecision))
+            {
+                <div><strong>Decision:</strong> @Trace.RoutingDecision</div>
+            }
+            @if (!string.IsNullOrEmpty(Trace.ModelUsed))
+            {
+                <div><strong>Model:</strong> @Trace.ModelUsed</div>
+            }
+            @if (Trace.FallbackTriggered)
+            {
+                <span class="badge badge--warning">Fallback</span>
+            }
+        </div>
+    </details>
+}
+
+@code {
+    [Parameter] public OrchestrationTrace? Trace { get; set; }
+    [Parameter] public string? AgentUsed { get; set; }
+}

@@ -1,0 +1,19 @@
+<div class="msg msg--user" role="listitem">
+    <div class="msg__bubble msg__bubble--user">
+        <p>@Message.Content</p>
+        @if (Message.Images?.Count > 0)
+        {
+            <div class="msg__images">
+                @foreach (var img in Message.Images)
+                {
+                    <img src="@img" alt="Attached image" class="msg__img" loading="lazy" />
+                }
+            </div>
+        }
+    </div>
+    <time class="msg__time">@Message.Timestamp.ToString("HH:mm")</time>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ChatMessage Message { get; set; } = default!;
+}
