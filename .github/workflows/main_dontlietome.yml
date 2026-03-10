@@ -5,13 +5,10 @@
 name: Build and deploy Python project to Azure Function App - dontlietome
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: 'src/backend'
   PYTHON_VERSION: '3.11' # set this to the python version to use (supports 3.6, 3.7, 3.8)
 
 jobs:
@@ -35,6 +32,7 @@ jobs:
           source venv/bin/activate
 
       - name: Install dependencies
+        working-directory: src/backend
         run: pip install -r requirements.txt
 
       # Optional: Add step to run tests here

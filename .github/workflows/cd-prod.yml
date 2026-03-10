@@ -31,6 +31,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          python -m pip install --upgrade setuptools wheel
           pip install -r requirements.txt
           pip install pytest
 
@@ -69,7 +70,7 @@ jobs:
 
       - name: Validate resource group region (immutable)
         run: |
-          RG_NAME="rg-dont-lie-to-me-${ENVIRONMENT_NAME}"
+          RG_NAME="dont_lie_to_me"
           if az group exists --name "$RG_NAME" | grep -qi true; then
             ACTUAL_LOCATION=$(az group show --name "$RG_NAME" --query location -o tsv)
             if [ "$ACTUAL_LOCATION" != "$AZURE_LOCATION" ]; then
@@ -120,7 +121,7 @@ jobs:
         run: |
           az webapp deployment slot swap \
             --name func-dont-lie-to-me-prod \
-            --resource-group rg-dont-lie-to-me-prod \
+            --resource-group dont_lie_to_me \
             --slot staging \
             --target-slot production
 

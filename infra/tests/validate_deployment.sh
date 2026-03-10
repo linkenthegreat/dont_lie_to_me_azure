@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-RG_NAME="rg-dont-lie-to-me-${ENVIRONMENT_NAME:-dev}"
+RG_NAME="dont_lie_to_me"
 echo "=== Validating deployment for resource group: $RG_NAME ==="
 
 echo ""
