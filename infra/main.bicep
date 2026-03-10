@@ -78,8 +78,8 @@ module functions 'modules/functions.bicep' = {
     location: location
     storageAccountName: storage.outputs.storageAccountName
     aiDeploymentName: aiDeploymentName
-    redisConnectionString: redis.outputs.redisConnectionString
-    cosmosConnectionString: cosmosDb.outputs.cosmosConnectionString
+    redisCacheName: redis.outputs.redisCacheName
+    cosmosAccountName: cosmosDb.outputs.cosmosAccountName
   }
 }
 
@@ -98,7 +98,6 @@ module monitoring 'modules/monitoring.bicep' = {
   scope: rg
   params: {
     environmentName: environmentName
-    appInsightsId: functions.outputs.appInsightsId
     functionAppId: functions.outputs.functionAppId
   }
 }
@@ -120,10 +119,10 @@ module functionsSecondary 'modules/functions.bicep' = if (enableMultiRegion) {
   params: {
     environmentName: '${environmentName}2'
     location: secondaryLocation
-    storageAccountName: enableMultiRegion ? storageSecondary.outputs.storageAccountName : ''
+    storageAccountName: enableMultiRegion ? storageSecondary!.outputs.storageAccountName : ''
     aiDeploymentName: aiDeploymentName
-    redisConnectionString: redis.outputs.redisConnectionString
-    cosmosConnectionString: cosmosDb.outputs.cosmosConnectionString
+    redisCacheName: redis.outputs.redisCacheName
+    cosmosAccountName: cosmosDb.outputs.cosmosAccountName
   }
 }
 
@@ -133,7 +132,7 @@ module frontDoor 'modules/frontdoor.bicep' = if (enableMultiRegion) {
   params: {
     environmentName: environmentName
     primaryBackendUrl: functions.outputs.functionAppUrl
-    secondaryBackendUrl: enableMultiRegion ? functionsSecondary.outputs.functionAppUrl : ''
+    secondaryBackendUrl: enableMultiRegion ? functionsSecondary!.outputs.functionAppUrl : ''
   }
 }
 
@@ -142,4 +141,4 @@ output functionAppUrl     string = functions.outputs.functionAppUrl
 output keyVaultUrl        string = keyVault.outputs.keyVaultUrl
 output cosmosEndpoint     string = cosmosDb.outputs.cosmosEndpoint
 output redisHostName      string = redis.outputs.redisHostName
-output frontDoorEndpoint  string = enableMultiRegion ? frontDoor.outputs.frontDoorEndpoint : ''
+output frontDoorEndpoint  string = enableMultiRegion ? frontDoor!.outputs.frontDoorEndpoint : ''

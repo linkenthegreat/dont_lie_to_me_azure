@@ -80,4 +80,3 @@ resource analysesContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/c
 
 output cosmosAccountName string = cosmosAccount.name
 output cosmosEndpoint string = cosmosAccount.properties.documentEndpoint
-output cosmosConnectionString string = cosmosAccount.listConnectionStrings().connectionStrings[0].connectionString
