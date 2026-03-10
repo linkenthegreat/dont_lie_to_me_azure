@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  AZURE_LOCATION: australiaeast
+  AZURE_LOCATION: eastus
   ENVIRONMENT_NAME: dev
 
 jobs:
