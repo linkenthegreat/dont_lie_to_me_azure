@@ -82,75 +82,48 @@
 
 See the full Mermaid diagram: [docs/architecture_v5.mmd](docs/architecture_v5.mmd)
 
-```
-                    ┌───────────────────────┐
-                    │   Azure Static Web    │  CDN · Auto SSL
-                    │   Apps                │  API Proxy → /api/*
-                    └──────────┬────────────┘
-                               │
-               ┌───────────────┴───────────────┐
-               │                               │
-    ┌──────────▼──────────┐         ┌──────────▼───────────┐
-    │  Blazor WASM        │         │  Azure Functions     │
-    │  .NET 8.0 Standalone│         │  Python 3.11         │
-    │                     │         │                      │
-    │  Chat-first UI      │ ──────► │  /api/chat (primary) │
-    │  Mobile-first PWA   │  POST   │  Agent Orchestrator  │
-    │  Brand: #8A2BE2     │ /chat   │  7+ Specialist Agents│
-    │  SEO · Open Graph   │         │  GPT-4o · Vision     │
-    └─────────────────────┘         └─────┬────────────────┘
-                                          │
-             ┌────────────────────────────┼──────────────┐
-             ▼                            ▼              ▼
-       ┌──────────┐              ┌──────────┐     ┌──────────┐
-       │Azure AI  │              │Cosmos DB │     │Redis     │
-       │Foundry   │              │NoSQL     │     │Cache     │
-       │GPT-4o    │              │History   │     │30min TTL │
-       └──────────┘              └──────────┘     └──────────┘
+```mermaid
+graph TD
+    User["User"] -->|HTTPS| SWA["Azure Static Web Apps<br/>CDN · Auto SSL · API Proxy"]
+    SWA --> Blazor["Blazor WASM (.NET 8.0)<br/>Chat-first UI · Mobile PWA<br/>SEO · Open Graph"]
+    SWA -->|"/api/*"| Functions["Azure Functions (Python 3.11)<br/>/api/chat · Agent Orchestrator<br/>7+ Specialist Agents"]
+    Blazor -->|"POST /api/chat"| Functions
+    Functions --> AI["Azure AI Foundry<br/>GPT-4o · Vision"]
+    Functions --> Cosmos["Cosmos DB NoSQL<br/>Analysis History"]
+    Functions --> Redis["Azure Redis Cache<br/>30min TTL"]
+
+    style SWA fill:#0078d4,stroke:#005a9e,color:#fff
+    style Blazor fill:#8A2BE2,stroke:#6B1FB8,color:#fff
+    style Functions fill:#0078d4,stroke:#005a9e,color:#fff
+    style AI fill:#6b3fa0,stroke:#4b2d73,color:#fff
+    style Cosmos fill:#004578,stroke:#003556,color:#fff
+    style Redis fill:#004578,stroke:#003556,color:#fff
 ```
 
 ### Image Forensics Pipeline
 
-```
-                    ┌──────────────────┐
-                    │  POST /analyze-  │
-                    │  image           │
-                    │  (base64 data    │
-                    │   URI input)     │
-                    └────────┬─────────┘
-                             │
-                    ┌────────▼─────────┐
-                    │  Pillow          │
-                    │  - Resize <=2048 │
-                    │  - EXIF extract  │
-                    │  - Format detect │
-                    └────────┬─────────┘
-                             │
-                    ┌────────▼─────────┐
-                    │  GPT-4o Vision   │
-                    │  (Multimodal)    │
-                    │                  │
-                    │  Analyses:       │
-                    │  . Text editing  │
-                    │  . Pixel artifacts│
-                    │  . UI consistency│
-                    │  . AI generation │
-                    │  . Deepfake      │
-                    │  . Platform ID   │
-                    └────────┬─────────┘
-                             │
-                    ┌────────▼─────────┐
-                    │  Merged Result   │
-                    │  Vision + EXIF   │
-                    │                  │
-                    │  Verdicts:       │
-                    │  AUTHENTIC       │
-                    │  LIKELY_MANIPULATED│
-                    │  MANIPULATED     │
-                    │  AI_GENERATED    │
-                    │  DEEPFAKE        │
-                    │  INCONCLUSIVE    │
-                    └──────────────────┘
+```mermaid
+graph TD
+    Input["POST /analyze-image<br/>base64 data URI"] --> Pillow["Pillow<br/>Resize ≤2048 · EXIF extract<br/>Format detect"]
+    Pillow --> Vision["GPT-4o Vision (Multimodal)<br/>Text editing · Pixel artifacts<br/>UI consistency · AI generation<br/>Deepfake · Platform ID"]
+    Vision --> Result["Merged Result: Vision + EXIF"]
+    Result --> V1["AUTHENTIC"]
+    Result --> V2["LIKELY_MANIPULATED"]
+    Result --> V3["MANIPULATED"]
+    Result --> V4["AI_GENERATED"]
+    Result --> V5["DEEPFAKE"]
+    Result --> V6["INCONCLUSIVE"]
+
+    style Input fill:#0078d4,stroke:#005a9e,color:#fff
+    style Pillow fill:#107c10,stroke:#0b5a0b,color:#fff
+    style Vision fill:#6b3fa0,stroke:#4b2d73,color:#fff
+    style Result fill:#8A2BE2,stroke:#6B1FB8,color:#fff
+    style V1 fill:#388E3C,stroke:#2E7D32,color:#fff
+    style V2 fill:#F57C00,stroke:#E65100,color:#fff
+    style V3 fill:#D32F2F,stroke:#B71C1C,color:#fff
+    style V4 fill:#D32F2F,stroke:#B71C1C,color:#fff
+    style V5 fill:#D32F2F,stroke:#B71C1C,color:#fff
+    style V6 fill:#9E9E9E,stroke:#757575,color:#fff
 ```
 
 ### Frontend Structure (Blazor WASM)
