@@ -24,7 +24,7 @@ targetScope = 'subscription'
 param environmentName string = 'dev'
 
 @description('Primary Azure region for all resources.')
-param location string = deployment().location
+param location string = 'australiaeast'
 
 @description('Azure OpenAI deployment name (model).')
 param aiDeploymentName string = 'gpt-4o'
@@ -37,7 +37,7 @@ param secondaryLocation string = 'westus2'
 
 // -- Resource group --------------------------------------------------------
 resource rg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
-  name: 'rg-dont-lie-to-me-${environmentName}'
+  name: 'dont_lie_to_me'
   location: location
 }
 
