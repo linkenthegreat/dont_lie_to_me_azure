@@ -7,6 +7,7 @@ on:
     branches: [main]
     paths:
       - "src/backend/**"
+      - "src/frontend-blazor/**"
       - "infra/**"
       - ".github/workflows/ci.yml"
 
@@ -59,3 +60,20 @@ jobs:
           az bicep build --file infra/modules/cosmosdb.bicep
           az bicep build --file infra/modules/frontdoor.bicep
           az bicep build --file infra/modules/monitoring.bicep
+
+  build-blazor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore src/frontend-blazor/DontLieToMe.Web/DontLieToMe.Web.csproj
+
+      - name: Build
+        run: dotnet build src/frontend-blazor/DontLieToMe.Web/DontLieToMe.Web.csproj -c Release --no-restore

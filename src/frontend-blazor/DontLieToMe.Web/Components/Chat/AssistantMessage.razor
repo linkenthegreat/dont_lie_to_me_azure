@@ -1,0 +1,20 @@
+<div class="msg msg--assistant" role="listitem">
+    <div class="msg__bubble msg__bubble--assistant">
+        <p>@Message.Content</p>
+
+        @if (Message.Response?.Data?.Count > 0)
+        {
+            <DataCard Data="@Message.Response.Data" AgentUsed="@Message.Response.AgentUsed" />
+        }
+
+        @if (Message.Response?.Trace is not null)
+        {
+            <TracePanel Trace="@Message.Response.Trace" AgentUsed="@Message.Response.AgentUsed" />
+        }
+    </div>
+    <time class="msg__time">@Message.Timestamp.ToString("HH:mm")</time>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ChatMessage Message { get; set; } = default!;
+}

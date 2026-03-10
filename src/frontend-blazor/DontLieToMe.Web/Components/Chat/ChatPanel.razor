@@ -1,0 +1,51 @@
+@inject IJSRuntime JS
+
+<div class="chat-panel">
+    <div class="chat-messages" @ref="_messagesRef" role="log" aria-live="polite">
+        @if (Messages.Count == 0 && !IsLoading)
+        {
+            <WelcomeMessage OnHintClick="OnSendMessage" />
+        }
+
+        @foreach (var msg in Messages)
+        {
+            if (msg.Role == "user")
+            {
+                <UserMessage Message="msg" />
+            }
+            else
+            {
+                <AssistantMessage Message="msg" />
+            }
+        }
+
+        @if (IsLoading)
+        {
+            <TypingIndicator />
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="chat-error" role="alert">
+            <span>@ErrorMessage</span>
+        </div>
+    }
+
+    <ChatInput OnSend="OnSendMessage" IsDisabled="IsLoading" />
+</div>
+
+@code {
+    [Parameter] public List<ChatMessage> Messages { get; set; } = new();
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public EventCallback<string> OnSendMessage { get; set; }
+
+    private ElementReference _messagesRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try { await JS.InvokeVoidAsync("scrollToBottom", _messagesRef); }
+        catch { /* Element not yet rendered */ }
+    }
+}

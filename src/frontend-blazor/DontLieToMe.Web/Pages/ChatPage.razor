@@ -1,0 +1,68 @@
+@page "/"
+@inject AppState State
+@inject IApiClient Api
+@inject ISessionService Session
+@implements IDisposable
+
+<PageTitle>Don't Lie To Me — Scam Detection</PageTitle>
+
+<section class="chat-page" role="main" aria-label="Chat">
+    <ChatPanel Messages="@State.Messages"
+               IsLoading="@State.IsLoading"
+               ErrorMessage="@State.ErrorMessage"
+               OnSendMessage="HandleSendMessage" />
+</section>
+
+@code {
+    protected override void OnInitialized()
+    {
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task HandleSendMessage(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message) && State.CurrentImages.Count == 0)
+            return;
+
+        State.ClearError();
+        var images = State.CurrentImages.Count > 0 ? new List<string>(State.CurrentImages) : null;
+        State.AddUserMessage(message, images);
+        State.SetLoading(true);
+
+        try
+        {
+            var sessionId = await Session.GetSessionIdAsync();
+            var request = new ChatRequest
+            {
+                Message = message,
+                SessionId = sessionId,
+                Images = images,
+                Context = new ChatContext
+                {
+                    Location = "AU",
+                    ConversationHistory = State.GetConversationHistory()
+                }
+            };
+
+            var response = await Api.SendChatMessageAsync(request);
+
+            if (response.Error is not null)
+                State.SetError(response.Error);
+            else
+                State.AddAssistantMessage(response);
+        }
+        catch
+        {
+            State.SetError("Something went wrong. Please try again.");
+        }
+        finally
+        {
+            State.SetLoading(false);
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= StateHasChanged;
+    }
+}

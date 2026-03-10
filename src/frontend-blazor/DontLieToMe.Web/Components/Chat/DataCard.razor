@@ -1,0 +1,222 @@
+@using System.Text.Json
+
+@if (Data is not null && AgentUsed != "receptionist")
+{
+    <div class="data-card">
+
+        @* ── Classifier ── *@
+        @if (HasKey("classification"))
+        {
+            var classification = GetString("classification");
+            var confidence = GetDouble("confidence");
+
+            <div class="data-card__header">
+                <span class="badge" style="background:@GetClassificationColor(classification)">@classification</span>
+                @if (confidence > 0)
+                {
+                    <span class="data-card__meta">@((confidence * 100).ToString("F0"))% confidence</span>
+                }
+            </div>
+            if (confidence > 0)
+            {
+                <div class="progress-bar">
+                    <div class="progress-bar__fill" style="width:@((confidence * 100).ToString("F0"))%;background:@GetClassificationColor(classification)"></div>
+                </div>
+            }
+            if (HasKey("reasoning"))
+            {
+                <p class="data-card__detail">@GetString("reasoning")</p>
+            }
+        }
+
+        @* ── URL Analyzer ── *@
+        else if (HasKey("verdict") && HasKey("url") && !HasKey("authenticity_score"))
+        {
+            var verdict = GetString("verdict");
+            <div class="data-card__header">
+                <span class="badge" style="background:@GetVerdictColor(verdict)">@verdict</span>
+            </div>
+            <code class="data-card__url">@GetString("url")</code>
+            <p class="data-card__detail">@(HasKey("recommendation") ? GetString("recommendation") : GetUrlRecommendation(verdict))</p>
+        }
+
+        @* ── Image Analysis ── *@
+        else if (HasKey("authenticity_score"))
+        {
+            var score = GetDouble("authenticity_score");
+            var verdict = GetString("verdict");
+
+            <div class="data-card__header">
+                <span class="badge" style="background:@GetVerdictColor(verdict)">@verdict</span>
+                <span class="data-card__meta">@((score * 100).ToString("F0"))% authentic</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-bar__fill" style="width:@((score * 100).ToString("F0"))%;background:@GetScoreColor(score)"></div>
+            </div>
+            var manipIndicators = GetStringList("manipulation_indicators");
+            if (manipIndicators.Count > 0)
+            {
+                <div class="data-card__section">
+                    <h4>Manipulation Indicators</h4>
+                    <ul>
+                        @foreach (var item in manipIndicators) { <li>@item</li> }
+                    </ul>
+                </div>
+            }
+        }
+
+        @* ── Sentiment Analysis ── *@
+        else if (HasKey("sentiment") || HasKey("manipulation") || HasKey("risk_assessment"))
+        {
+            if (HasKey("sentiment"))
+            {
+                <div class="data-card__header">
+                    <strong>Sentiment:</strong> <span>@GetString("sentiment")</span>
+                </div>
+            }
+            if (HasKey("risk_assessment"))
+            {
+                var risk = GetString("risk_assessment");
+                <div class="data-card__section">
+                    <span class="badge badge--@risk.ToLowerInvariant()">@risk Risk</span>
+                </div>
+            }
+            if (HasKey("manipulation"))
+            {
+                var pressure = GetDouble("manipulation");
+                if (pressure > 0)
+                {
+                    <div class="data-card__section">
+                        <h4>Manipulation Pressure</h4>
+                        <div class="progress-bar">
+                            <div class="progress-bar__fill" style="width:@((pressure * 100).ToString("F0"))%;background:@GetScoreColor(1 - pressure)"></div>
+                        </div>
+                    </div>
+                }
+            }
+        }
+
+        @* ── Analysis ── *@
+        else if (HasKey("red_flags") || HasKey("persuasion_techniques") || HasKey("impersonation_indicators"))
+        {
+            var rf = GetStringList("red_flags");
+            if (rf.Count > 0)
+            {
+                <div class="data-card__section">
+                    <h4>Red Flags</h4>
+                    <ul>@foreach (var item in rf) { <li>@item</li> }</ul>
+                </div>
+            }
+            var pt = GetStringList("persuasion_techniques");
+            if (pt.Count > 0)
+            {
+                <div class="data-card__section">
+                    <h4>Persuasion Techniques</h4>
+                    <ul>@foreach (var item in pt) { <li>@item</li> }</ul>
+                </div>
+            }
+            var ii = GetStringList("impersonation_indicators");
+            if (ii.Count > 0)
+            {
+                <div class="data-card__section">
+                    <h4>Impersonation Indicators</h4>
+                    <ul>@foreach (var item in ii) { <li>@item</li> }</ul>
+                </div>
+            }
+        }
+
+        @* ── Guidance ── *@
+        else if (HasKey("immediate_actions") || HasKey("reporting_steps") || HasKey("prevention_tips") || HasKey("resources"))
+        {
+            var ia = GetStringList("immediate_actions");
+            if (ia.Count > 0)
+            {
+                <div class="data-card__section">
+                    <h4>Immediate Actions</h4>
+                    <ol>@foreach (var item in ia) { <li>@item</li> }</ol>
+                </div>
+            }
+            var rs = GetStringList("reporting_steps");
+            if (rs.Count > 0)
+            {
+                <div class="data-card__section">
+                    <h4>Reporting Steps</h4>
+                    <ol>@foreach (var item in rs) { <li>@item</li> }</ol>
+                </div>
+            }
+            var tips = GetStringList("prevention_tips");
+            if (tips.Count > 0)
+            {
+                <div class="data-card__section">
+                    <h4>Prevention Tips</h4>
+                    <ul>@foreach (var item in tips) { <li>@item</li> }</ul>
+                </div>
+            }
+            var res = GetStringList("resources");
+            if (res.Count > 0)
+            {
+                <div class="data-card__section">
+                    <h4>Resources</h4>
+                    <ul>@foreach (var item in res) { <li>@item</li> }</ul>
+                </div>
+            }
+        }
+
+    </div>
+}
+
+@code {
+    [Parameter] public Dictionary<string, JsonElement>? Data { get; set; }
+    [Parameter] public string? AgentUsed { get; set; }
+
+    private bool HasKey(string key) => Data?.ContainsKey(key) == true;
+
+    private string GetString(string key) =>
+        Data?.TryGetValue(key, out var el) == true && el.ValueKind == JsonValueKind.String
+            ? el.GetString() ?? "" : "";
+
+    private double GetDouble(string key) =>
+        Data?.TryGetValue(key, out var el) == true && el.ValueKind == JsonValueKind.Number
+            ? el.GetDouble() : 0;
+
+    private List<string> GetStringList(string key) =>
+        Data?.TryGetValue(key, out var el) == true && el.ValueKind == JsonValueKind.Array
+            ? el.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.String).Select(e => e.GetString()!).ToList()
+            : new();
+
+    private static string GetClassificationColor(string c) => c.ToUpperInvariant() switch
+    {
+        "SCAM"        => "#D32F2F",
+        "LIKELY_SCAM" => "#F57C00",
+        "SUSPICIOUS"  => "#FBC02D",
+        "SAFE"        => "#388E3C",
+        _             => "#666"
+    };
+
+    private static string GetVerdictColor(string v) => v.ToUpperInvariant() switch
+    {
+        "THREAT_DETECTED"    => "#D32F2F",
+        "SUSPICIOUS"         => "#F57C00",
+        "MANIPULATED"        => "#D32F2F",
+        "LIKELY_MANIPULATED" => "#F57C00",
+        "NOT_FLAGGED"        => "#388E3C",
+        "AUTHENTIC"          => "#388E3C",
+        _                    => "#666"
+    };
+
+    private static string GetScoreColor(double score) => score switch
+    {
+        >= 0.7 => "#388E3C",
+        >= 0.4 => "#FBC02D",
+        _      => "#D32F2F"
+    };
+
+    private static string GetUrlRecommendation(string verdict) => verdict.ToUpperInvariant() switch
+    {
+        "THREAT_DETECTED" => "Do not click this link. It appears to be malicious.",
+        "SUSPICIOUS"      => "Exercise caution. This link shows suspicious characteristics.",
+        "UNABLE_TO_CHECK" => "Could not verify this URL. Treat with caution.",
+        "NOT_FLAGGED"     => "No threats detected, but always stay alert.",
+        _                 => "Treat this link with caution."
+    };
+}
