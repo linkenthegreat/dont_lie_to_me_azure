@@ -35,6 +35,9 @@ param enableMultiRegion bool = false
 @description('Secondary Azure region for geo-redundancy.')
 param secondaryLocation string = 'westus2'
 
+@description('Create Key Vault role assignments during deployment. Requires User Access Administrator or Owner.')
+param createRoleAssignments bool = false
+
 // -- Resource group --------------------------------------------------------
 resource rg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   name: 'dont_lie_to_me'
@@ -90,6 +93,7 @@ module keyVault 'modules/keyvault.bicep' = {
     environmentName: environmentName
     location: location
     functionPrincipalId: functions.outputs.functionPrincipalId
+    createRoleAssignment: createRoleAssignments
   }
 }
 
