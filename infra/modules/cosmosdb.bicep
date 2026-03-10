@@ -63,6 +63,7 @@ resource analysesContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/c
         automatic: true
         indexingMode: 'consistent'
         includedPaths: [
+          { path: '/*' }
           { path: '/timestamp/?' }
           { path: '/endpoint/?' }
           { path: '/result/classification/?' }
