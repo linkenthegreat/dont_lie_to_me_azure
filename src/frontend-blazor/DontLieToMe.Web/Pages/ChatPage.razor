@@ -2,6 +2,7 @@
 @inject AppState State
 @inject IApiClient Api
 @inject ISessionService Session
+@inject IConversationStorageService ConversationStorage
 @implements IDisposable
 
 <PageTitle>Don't Lie To Me — Scam Detection</PageTitle>
@@ -47,9 +48,14 @@
             var response = await Api.SendChatMessageAsync(request);
 
             if (response.Error is not null)
+            {
                 State.SetError(response.Error);
+            }
             else
+            {
                 State.AddAssistantMessage(response);
+                await ConversationStorage.SaveConversationAsync(State.ToConversation());
+            }
         }
         catch
         {

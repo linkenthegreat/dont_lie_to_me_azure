@@ -101,6 +101,7 @@ html, body {
     color: var(--white);
     display: flex;
     align-items: center;
+    justify-content: space-between;
     padding: 0 16px;
     z-index: 100;
     border-bottom: 2px solid var(--purple);
@@ -844,6 +845,11 @@ html, body {
     background: var(--gray-100);
 }
 
+.history-item--active {
+    background: var(--purple-light);
+    border-left: 3px solid var(--purple);
+}
+
 .history-item__icon {
     flex-shrink: 0;
     width: 36px;
@@ -891,6 +897,32 @@ html, body {
 .history-item__time {
     font-size: 0.7rem;
     color: var(--gray-400);
+}
+
+.history-item__delete {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
+    color: var(--gray-300);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    transition: all 0.15s;
+    opacity: 0;
+}
+
+.history-item:hover .history-item__delete {
+    opacity: 1;
+}
+
+.history-item__delete:hover {
+    color: var(--red);
+    background: rgba(211, 47, 47, 0.1);
 }
 
 /* ═══════════════════════════════════════════
