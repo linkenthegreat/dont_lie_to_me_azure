@@ -13,6 +13,9 @@ param location string = resourceGroup().location
 @description('Object/principal ID of the Function App managed identity.')
 param functionPrincipalId string
 
+@description('Whether to create RBAC role assignment for Function App on Key Vault.')
+param createRoleAssignment bool = false
+
 var keyVaultName = 'kv-dontlie-${environmentName}-${take(uniqueString(resourceGroup().id), 6)}'
 
 // ── Key Vault ──────────────────────────────────────────────────────────────
@@ -40,7 +43,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
 
 // ── RBAC: grant the Function App "Key Vault Secrets User" ─────────────────
 // Role definition ID for "Key Vault Secrets User": 4633458b-17de-408a-b874-0445c86b69e6
-resource secretsUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource secretsUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (createRoleAssignment) {
   name: guid(keyVault.id, functionPrincipalId, '4633458b-17de-408a-b874-0445c86b69e6')
   scope: keyVault
   properties: {
