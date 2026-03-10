@@ -3,6 +3,12 @@
 <div class="app-shell">
     <header class="app-header">
         <div class="header-brand">
+            <button class="header-btn" @onclick="ToggleHistory" aria-label="Chat history" title="Chat history">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+            </button>
             <img src="icon-192.png" alt="DLM" class="header-logo" />
             <div class="header-text">
                 <h1>Don't Lie To Me</h1>
@@ -10,6 +16,8 @@
             </div>
         </div>
     </header>
+
+    <HistoryDrawer IsOpen="@_historyOpen" OnClose="CloseHistory" />
 
     <main class="app-main">
         @Body
@@ -19,3 +27,10 @@
         <span>Powered by Azure AI Foundry & Azure Functions</span>
     </footer>
 </div>
+
+@code {
+    private bool _historyOpen;
+
+    private void ToggleHistory() => _historyOpen = !_historyOpen;
+    private void CloseHistory() => _historyOpen = false;
+}

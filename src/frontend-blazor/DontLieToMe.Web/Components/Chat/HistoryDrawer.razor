@@ -1,0 +1,137 @@
+@inject IApiClient Api
+@inject ISessionService Session
+
+<div class="drawer-overlay @(IsOpen ? "drawer-overlay--visible" : "")" @onclick="Close"></div>
+
+<aside class="drawer @(IsOpen ? "drawer--open" : "")" aria-label="Chat history">
+    <div class="drawer__header">
+        <h2>Recent Chats</h2>
+        <button class="drawer__close" @onclick="Close" aria-label="Close history">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+    </div>
+
+    <div class="drawer__body">
+        @if (_loading)
+        {
+            <div class="drawer__loading">
+                <div class="typing">
+                    <div class="typing__dot"></div>
+                    <div class="typing__dot"></div>
+                    <div class="typing__dot"></div>
+                </div>
+            </div>
+        }
+        else if (_entries.Count == 0)
+        {
+            <div class="drawer__empty">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--gray-300)" stroke-width="1.5">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <p>No history yet</p>
+                <span>Your recent conversations will appear here</span>
+            </div>
+        }
+        else
+        {
+            <ul class="drawer__list">
+                @foreach (var entry in _entries)
+                {
+                    <li class="history-item" @onclick="() => Close()">
+                        <div class="history-item__icon">
+                            @GetEndpointIcon(entry.Endpoint)
+                        </div>
+                        <div class="history-item__content">
+                            <span class="history-item__text">@Truncate(entry.InputText, 80)</span>
+                            <div class="history-item__meta">
+                                <span class="history-item__endpoint">@FormatEndpoint(entry.Endpoint)</span>
+                                <span class="history-item__time">@FormatTime(entry.Timestamp)</span>
+                            </div>
+                        </div>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</aside>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private List<HistoryEntry> _entries = new();
+    private bool _loading;
+    private bool _lastOpen;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && !_lastOpen)
+        {
+            await LoadHistory();
+        }
+        _lastOpen = IsOpen;
+    }
+
+    private async Task LoadHistory()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        var sessionId = await Session.GetSessionIdAsync();
+        _entries = await Api.GetHistoryAsync(sessionId, 10);
+        _entries = _entries.OrderByDescending(e => e.Timestamp).ToList();
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task Close()
+    {
+        await OnClose.InvokeAsync();
+    }
+
+    private static string Truncate(string text, int max)
+    {
+        if (string.IsNullOrEmpty(text)) return "(empty)";
+        return text.Length <= max ? text : text[..max] + "...";
+    }
+
+    private static string FormatEndpoint(string endpoint) => endpoint switch
+    {
+        "chat" => "Chat",
+        "classify" => "Classification",
+        "analyze" => "Analysis",
+        "guidance" => "Guidance",
+        "sentiment" => "Sentiment",
+        "analyze-image" => "Image Analysis",
+        _ => endpoint
+    };
+
+    private static string GetEndpointIcon(string endpoint) => endpoint switch
+    {
+        "chat" => "\U0001F4AC",
+        "classify" => "\U0001F6E1",
+        "analyze" => "\U0001F50D",
+        "guidance" => "\U0001F6A8",
+        "sentiment" => "\U0001F9E0",
+        "analyze-image" => "\U0001F5BC",
+        _ => "\U0001F4CB"
+    };
+
+    private static string FormatTime(string timestamp)
+    {
+        if (DateTime.TryParse(timestamp, out var dt))
+        {
+            var diff = DateTime.UtcNow - dt;
+            if (diff.TotalMinutes < 1) return "just now";
+            if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+            if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+            if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}d ago";
+            return dt.ToString("MMM d");
+        }
+        return timestamp;
+    }
+}
