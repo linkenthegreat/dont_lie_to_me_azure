@@ -112,4 +112,19 @@ jobs:
       - name: Smoke test health endpoint
         run: |
           FUNC_URL="https://func-dont-lie-to-me-dev.azurewebsites.net"
-          curl -sf "$FUNC_URL/api/health" || echo "Health check skipped (may need function key)"
+          for attempt in $(seq 1 12); do
+            status=$(curl -sS -L -o response_body.txt -w "%{http_code}" "$FUNC_URL/api/health" || true)
+            body=$(cat response_body.txt)
+            if [ "$status" = "200" ]; then
+              python -c "import json,sys; d=json.loads(sys.argv[1]); assert d.get('status') == 'ok', f'Health check failed: {d}'" "$body" && break
+            fi
+            echo "Attempt $attempt/12: dev health endpoint not ready yet (status=$status)."
+            if [ -n "$body" ]; then
+              echo "$body"
+            fi
+            if [ "$attempt" -eq 12 ]; then
+              echo "Dev smoke test failed after retries."
+              exit 1
+            fi
+            sleep 15
+          done
