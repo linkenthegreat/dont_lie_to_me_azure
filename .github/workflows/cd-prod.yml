@@ -98,12 +98,34 @@ jobs:
           scm-do-build-during-deployment: true
           enable-oryx-build: true
 
+      - name: Inspect deployed functions (diagnostic)
+        run: |
+          az functionapp function list \
+            --name func-dont-lie-to-me-prod \
+            --resource-group dont_lie_to_me \
+            --slot staging \
+            --query "[].name" -o tsv
+
       - name: Run smoke tests against staging
         run: |
           STAGING_URL="https://func-dont-lie-to-me-prod-staging.azurewebsites.net"
           echo "Running smoke tests against $STAGING_URL..."
+          HEALTH_PATH=""
+          for path in /api/health /health; do
+            status=$(curl -sS -L -o response_body.txt -w "%{http_code}" "$STAGING_URL$path" || true)
+            if [ "$status" = "200" ]; then
+              HEALTH_PATH="$path"
+              break
+            fi
+          done
+          if [ -z "$HEALTH_PATH" ]; then
+            echo "No healthy endpoint found at /api/health or /health on staging slot."
+            echo "This usually means functions were not loaded by the host."
+            exit 1
+          fi
+          echo "Using health path: $HEALTH_PATH"
           for attempt in $(seq 1 12); do
-            status=$(curl -sS -L -o response_body.txt -w "%{http_code}" "$STAGING_URL/api/health" || true)
+            status=$(curl -sS -L -o response_body.txt -w "%{http_code}" "$STAGING_URL$HEALTH_PATH" || true)
             body=$(cat response_body.txt)
             if [ "$status" = "200" ]; then
               python -c "import json,sys; d=json.loads(sys.argv[1]); assert d.get('status') == 'ok', f'Health check failed: {d}'" "$body" && break
@@ -144,8 +166,21 @@ jobs:
         run: |
           PROD_URL="https://func-dont-lie-to-me-prod.azurewebsites.net"
           echo "Verifying production health..."
+          HEALTH_PATH=""
+          for path in /api/health /health; do
+            status=$(curl -sS -L -o response_body.txt -w "%{http_code}" "$PROD_URL$path" || true)
+            if [ "$status" = "200" ]; then
+              HEALTH_PATH="$path"
+              break
+            fi
+          done
+          if [ -z "$HEALTH_PATH" ]; then
+            echo "No healthy endpoint found at /api/health or /health on production slot."
+            exit 1
+          fi
+          echo "Using health path: $HEALTH_PATH"
           for attempt in $(seq 1 12); do
-            status=$(curl -sS -L -o response_body.txt -w "%{http_code}" "$PROD_URL/api/health" || true)
+            status=$(curl -sS -L -o response_body.txt -w "%{http_code}" "$PROD_URL$HEALTH_PATH" || true)
             body=$(cat response_body.txt)
             if [ "$status" = "200" ]; then
               python -c "import json,sys; d=json.loads(sys.argv[1]); assert d.get('status') == 'ok', f'Production health check failed: {d}'" "$body" && break
