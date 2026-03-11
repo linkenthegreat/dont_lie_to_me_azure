@@ -89,6 +89,11 @@ jobs:
             --template-file infra/main.bicep \
             --parameters environmentName=$ENVIRONMENT_NAME location=$AZURE_LOCATION aiDeploymentName=gpt-4o createRoleAssignments=false
 
+      - name: Setup Python for deployment package
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Install Python packages for deployment
         run: |
           pip install -r src/backend/requirements.txt \
