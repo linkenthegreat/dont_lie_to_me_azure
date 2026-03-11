@@ -119,32 +119,34 @@ jobs:
       - name: Smoke test health endpoint
         run: |
           FUNC_URL="https://func-dont-lie-to-me-dev.azurewebsites.net"
-          HEALTH_PATH=""
-          for path in /api/health /health; do
-            status=$(curl -sS -L -o response_body.txt -w "%{http_code}" "$FUNC_URL$path" || true)
-            if [ "$status" = "200" ]; then
-              HEALTH_PATH="$path"
+          for attempt in $(seq 1 12); do
+            success=0
+            for path in /api/health /health; do
+              status=$(curl -sS -L -o response_body.txt -w "%{http_code}" "$FUNC_URL$path" || true)
+              body=$(cat response_body.txt)
+              if [ "$status" = "200" ]; then
+                python -c "import json,sys; d=json.loads(sys.argv[1]); assert d.get('status') == 'ok', f'Health check failed: {d}'" "$body"
+                echo "Dev health endpoint is ready at $path"
+                success=1
+                break
+              fi
+              echo "Attempt $attempt/12 path=$path status=$status"
+            done
+            if [ "$success" -eq 1 ]; then
               break
             fi
-          done
-          if [ -z "$HEALTH_PATH" ]; then
-            echo "No healthy endpoint found at /api/health or /health."
-            echo "This usually means functions were not loaded by the host."
-            exit 1
-          fi
-          echo "Using health path: $HEALTH_PATH"
-          for attempt in $(seq 1 12); do
-            status=$(curl -sS -L -o response_body.txt -w "%{http_code}" "$FUNC_URL$HEALTH_PATH" || true)
-            body=$(cat response_body.txt)
-            if [ "$status" = "200" ]; then
-              python -c "import json,sys; d=json.loads(sys.argv[1]); assert d.get('status') == 'ok', f'Health check failed: {d}'" "$body" && break
-            fi
-            echo "Attempt $attempt/12: dev health endpoint not ready yet (status=$status)."
-            if [ -n "$body" ]; then
-              echo "$body"
-            fi
             if [ "$attempt" -eq 12 ]; then
-              echo "Dev smoke test failed after retries."
+              echo "Dev smoke test failed after retries. No healthy endpoint found at /api/health or /health."
+              echo "Discovered functions:"
+              az functionapp function list \
+                --name func-dont-lie-to-me-dev \
+                --resource-group dont_lie_to_me \
+                --query "[].name" -o tsv || true
+              echo "Function App state:"
+              az functionapp show \
+                --name func-dont-lie-to-me-dev \
+                --resource-group dont_lie_to_me \
+                --query "{state:state, defaultHostName:defaultHostName, linuxFxVersion:siteConfig.linuxFxVersion}" -o jsonc || true
               exit 1
             fi
             sleep 15
