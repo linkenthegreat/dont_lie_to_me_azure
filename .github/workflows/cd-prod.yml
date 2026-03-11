@@ -140,11 +140,10 @@ jobs:
 
       - name: Inspect deployed functions (diagnostic)
         run: |
-          az functionapp function list \
-            --name func-dont-lie-to-me-prod \
-            --resource-group dont_lie_to_me \
-            --slot staging \
-            --query "[].name" -o tsv
+          SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+          az rest --method get \
+            --url "https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/dont_lie_to_me/providers/Microsoft.Web/sites/func-dont-lie-to-me-prod/slots/staging/functions?api-version=2022-03-01" \
+            --query "value[].name" -o tsv
 
       - name: Run smoke tests against staging
         run: |
