@@ -89,11 +89,11 @@ jobs:
           scm-do-build-during-deployment: true
           enable-oryx-build: true
 
-      - name: Sync function triggers
+      - name: Sync function triggers (REST)
         run: |
-          az functionapp sync-function-triggers \
-            --name func-dont-lie-to-me-dev \
-            --resource-group dont_lie_to_me
+          SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+          az rest --method post \
+            --url "https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/dont_lie_to_me/providers/Microsoft.Web/sites/func-dont-lie-to-me-dev/syncfunctiontriggers?api-version=2022-03-01"
 
       - name: Inspect deployed functions (diagnostic)
         run: |
