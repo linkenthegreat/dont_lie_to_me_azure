@@ -1,4 +1,4 @@
-azure-functions>=1.25.0b3
+azure-functions>=1.23.0,<2.0.0
 openai>=1.30.0
 azure-identity>=1.16.0
 azure-keyvault-secrets>=4.8.0

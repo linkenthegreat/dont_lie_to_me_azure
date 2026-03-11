@@ -9,15 +9,8 @@
     }
   },
   "extensionBundle": {
-    "id": "Microsoft.Azure.Functions.ExtensionBundle.Preview",
-    "version": "[4.32.0, 5.0.0)"
-  },
-  "extensions": {
-    "mcpToolTrigger": {
-      "serverName": "dont-lie-to-me",
-      "serverVersion": "1.0.0",
-      "serverInstructions": "Anti-scam analysis tools. Use store_analysis to persist results, query_history to retrieve past analyses, and check_known_scam to search for similar known scam patterns."
-    }
+    "id": "Microsoft.Azure.Functions.ExtensionBundle",
+    "version": "[4.*, 5.0.0)"
   },
   "http": {
     "routePrefix": "api"

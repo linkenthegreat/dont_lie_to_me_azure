@@ -122,6 +122,25 @@ jobs:
             --name func-dont-lie-to-me-dev \
             --resource-group dont_lie_to_me \
             --query "[].name" -o tsv
+          FUNCTION_COUNT=$(az functionapp function list \
+            --name func-dont-lie-to-me-dev \
+            --resource-group dont_lie_to_me \
+            --query "length(@)" -o tsv)
+          echo "Discovered function count: ${FUNCTION_COUNT}"
+          if [ "${FUNCTION_COUNT}" = "0" ]; then
+            echo "No functions were indexed by the runtime."
+            echo "Key Function App settings:"
+            az functionapp config appsettings list \
+              --name func-dont-lie-to-me-dev \
+              --resource-group dont_lie_to_me \
+              --query "[?name=='FUNCTIONS_WORKER_RUNTIME' || name=='FUNCTIONS_EXTENSION_VERSION' || name=='AzureWebJobsFeatureFlags' || name=='PYTHONPATH' || name=='SCM_DO_BUILD_DURING_DEPLOYMENT' || name=='ENABLE_ORYX_BUILD' || name=='WEBSITE_RUN_FROM_PACKAGE'].{name:name,value:value}" -o table || true
+            echo "Latest deployment records:"
+            az functionapp deployment list \
+              --name func-dont-lie-to-me-dev \
+              --resource-group dont_lie_to_me \
+              --query "[0:5].[status,author,message,end_time]" -o table || true
+            exit 1
+          fi
 
   validate-deployment:
     runs-on: ubuntu-latest
@@ -169,6 +188,11 @@ jobs:
                 --name func-dont-lie-to-me-dev \
                 --resource-group dont_lie_to_me \
                 --query "[].name" -o tsv || true
+              echo "Latest deployment records:"
+              az functionapp deployment list \
+                --name func-dont-lie-to-me-dev \
+                --resource-group dont_lie_to_me \
+                --query "[0:5].[status,author,message,end_time]" -o table || true
               echo "Function App state:"
               az functionapp show \
                 --name func-dont-lie-to-me-dev \
