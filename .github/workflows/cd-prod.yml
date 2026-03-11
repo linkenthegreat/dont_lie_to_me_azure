@@ -98,11 +98,35 @@ jobs:
           scm-do-build-during-deployment: true
           enable-oryx-build: true
 
+      - name: Verify PYTHONPATH app setting is applied (staging)
+        run: |
+          PY=$(az functionapp config appsettings list \
+            --name func-dont-lie-to-me-prod \
+            --resource-group dont_lie_to_me \
+            --slot staging \
+            --query "[?name=='PYTHONPATH'].value" -o tsv)
+          echo "PYTHONPATH on Azure (staging): $PY"
+          FLAGS=$(az functionapp config appsettings list \
+            --name func-dont-lie-to-me-prod \
+            --resource-group dont_lie_to_me \
+            --slot staging \
+            --query "[?name=='AzureWebJobsFeatureFlags'].value" -o tsv)
+          echo "AzureWebJobsFeatureFlags on Azure (staging): $FLAGS"
+
       - name: Sync function triggers (staging, REST)
         run: |
           SUBSCRIPTION_ID=$(az account show --query id -o tsv)
           az rest --method post \
             --url "https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/dont_lie_to_me/providers/Microsoft.Web/sites/func-dont-lie-to-me-prod/slots/staging/syncfunctiontriggers?api-version=2022-03-01"
+
+      - name: Restart staging slot after deployment
+        run: |
+          az functionapp restart \
+            --name func-dont-lie-to-me-prod \
+            --resource-group dont_lie_to_me \
+            --slot staging
+          echo "Waiting 30s for cold start after restart..."
+          sleep 30
 
       - name: Inspect deployed functions (diagnostic)
         run: |
@@ -127,7 +151,7 @@ jobs:
                 success=1
                 break
               fi
-              echo "Attempt $attempt/12 path=$path status=$status"
+              echo "Attempt $attempt/12 path=$path status=$status body=$body"
             done
             if [ "$success" -eq 1 ]; then
               break
@@ -175,7 +199,7 @@ jobs:
                 success=1
                 break
               fi
-              echo "Attempt $attempt/12 path=$path status=$status"
+              echo "Attempt $attempt/12 path=$path status=$status body=$body"
             done
             if [ "$success" -eq 1 ]; then
               break

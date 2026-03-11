@@ -100,6 +100,12 @@ var sharedSiteConfig = {
       value: 'true'
     }
     {
+      // Required for Oryx remote-build: packages land in .python_packages/lib/site-packages
+      // and the Python v2 worker must find them when it imports function_app.py at startup.
+      name: 'PYTHONPATH'
+      value: '/home/site/wwwroot/.python_packages/lib/site-packages'
+    }
+    {
       name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
       value: appInsights.properties.InstrumentationKey
     }
