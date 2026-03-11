@@ -135,10 +135,26 @@ jobs:
               --resource-group dont_lie_to_me \
               --query "[?name=='FUNCTIONS_WORKER_RUNTIME' || name=='FUNCTIONS_EXTENSION_VERSION' || name=='AzureWebJobsFeatureFlags' || name=='PYTHONPATH' || name=='SCM_DO_BUILD_DURING_DEPLOYMENT' || name=='ENABLE_ORYX_BUILD' || name=='WEBSITE_RUN_FROM_PACKAGE'].{name:name,value:value}" -o table || true
             echo "Latest deployment records:"
-            az functionapp deployment list \
+            az webapp log deployment list \
               --name func-dont-lie-to-me-dev \
               --resource-group dont_lie_to_me \
-              --query "[0:5].[status,author,message,end_time]" -o table || true
+              --query "[0:5].[id,status,author,message,end_time]" -o table || true
+            echo "Host runtime status (admin API):"
+            MASTER_KEY=$(az functionapp keys list \
+              --name func-dont-lie-to-me-dev \
+              --resource-group dont_lie_to_me \
+              --query masterKey -o tsv || true)
+            if [ -n "$MASTER_KEY" ]; then
+              curl -sS "https://func-dont-lie-to-me-dev.azurewebsites.net/admin/host/status" \
+                -H "x-functions-key: $MASTER_KEY" || true
+              echo
+              echo "Indexed functions from admin API:"
+              curl -sS "https://func-dont-lie-to-me-dev.azurewebsites.net/admin/functions" \
+                -H "x-functions-key: $MASTER_KEY" || true
+              echo
+            else
+              echo "Could not retrieve function app master key for admin diagnostics."
+            fi
             exit 1
           fi
 
@@ -189,10 +205,26 @@ jobs:
                 --resource-group dont_lie_to_me \
                 --query "[].name" -o tsv || true
               echo "Latest deployment records:"
-              az functionapp deployment list \
+              az webapp log deployment list \
                 --name func-dont-lie-to-me-dev \
                 --resource-group dont_lie_to_me \
-                --query "[0:5].[status,author,message,end_time]" -o table || true
+                --query "[0:5].[id,status,author,message,end_time]" -o table || true
+              echo "Host runtime status (admin API):"
+              MASTER_KEY=$(az functionapp keys list \
+                --name func-dont-lie-to-me-dev \
+                --resource-group dont_lie_to_me \
+                --query masterKey -o tsv || true)
+              if [ -n "$MASTER_KEY" ]; then
+                curl -sS "https://func-dont-lie-to-me-dev.azurewebsites.net/admin/host/status" \
+                  -H "x-functions-key: $MASTER_KEY" || true
+                echo
+                echo "Indexed functions from admin API:"
+                curl -sS "https://func-dont-lie-to-me-dev.azurewebsites.net/admin/functions" \
+                  -H "x-functions-key: $MASTER_KEY" || true
+                echo
+              else
+                echo "Could not retrieve function app master key for admin diagnostics."
+              fi
               echo "Function App state:"
               az functionapp show \
                 --name func-dont-lie-to-me-dev \
