@@ -155,6 +155,24 @@ jobs:
             else
               echo "Could not retrieve function app master key for admin diagnostics."
             fi
+            echo "Recent runtime exceptions from Application Insights:"
+            az extension add --name application-insights --only-show-errors || true
+            AI_NAME=$(az resource list \
+              --resource-group dont_lie_to_me \
+              --resource-type "microsoft.insights/components" \
+              --query "[0].name" -o tsv || true)
+            if [ -n "$AI_NAME" ]; then
+              az monitor app-insights query \
+                --app "$AI_NAME" \
+                --analytics-query "exceptions | where timestamp > ago(30m) | project timestamp, type, outerMessage, problemId | take 20" \
+                -o table || true
+              az monitor app-insights query \
+                --app "$AI_NAME" \
+                --analytics-query "traces | where timestamp > ago(30m) and (message contains 'Worker' or message contains 'index' or message contains 'function_app' or message contains 'ImportError' or message contains 'ModuleNotFoundError') | project timestamp, severityLevel, message | take 30" \
+                -o table || true
+            else
+              echo "Application Insights component not found in resource group."
+            fi
             exit 1
           fi
 
@@ -224,6 +242,24 @@ jobs:
                 echo
               else
                 echo "Could not retrieve function app master key for admin diagnostics."
+              fi
+              echo "Recent runtime exceptions from Application Insights:"
+              az extension add --name application-insights --only-show-errors || true
+              AI_NAME=$(az resource list \
+                --resource-group dont_lie_to_me \
+                --resource-type "microsoft.insights/components" \
+                --query "[0].name" -o tsv || true)
+              if [ -n "$AI_NAME" ]; then
+                az monitor app-insights query \
+                  --app "$AI_NAME" \
+                  --analytics-query "exceptions | where timestamp > ago(30m) | project timestamp, type, outerMessage, problemId | take 20" \
+                  -o table || true
+                az monitor app-insights query \
+                  --app "$AI_NAME" \
+                  --analytics-query "traces | where timestamp > ago(30m) and (message contains 'Worker' or message contains 'index' or message contains 'function_app' or message contains 'ImportError' or message contains 'ModuleNotFoundError') | project timestamp, severityLevel, message | take 30" \
+                  -o table || true
+              else
+                echo "Application Insights component not found in resource group."
               fi
               echo "Function App state:"
               az functionapp show \
