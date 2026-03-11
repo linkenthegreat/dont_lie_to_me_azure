@@ -89,6 +89,12 @@ jobs:
           scm-do-build-during-deployment: true
           enable-oryx-build: true
 
+      - name: Sync function triggers
+        run: |
+          az functionapp sync-function-triggers \
+            --name func-dont-lie-to-me-dev \
+            --resource-group dont_lie_to_me
+
       - name: Inspect deployed functions (diagnostic)
         run: |
           az functionapp function list \
