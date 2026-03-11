@@ -93,15 +93,15 @@ var sharedSiteConfig = {
     }
     {
       name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
-      value: 'true'
+      value: 'false'
     }
     {
       name: 'ENABLE_ORYX_BUILD'
-      value: 'true'
+      value: 'false'
     }
     {
-      // Required for Oryx remote-build: packages land in .python_packages/lib/site-packages
-      // and the Python v2 worker must find them when it imports function_app.py at startup.
+      // Dependencies are packaged into .python_packages during CI and deployed as run-from-package.
+      // Keep this path so the Python worker can resolve those packaged modules at startup.
       name: 'PYTHONPATH'
       value: '/home/site/wwwroot/.python_packages/lib/site-packages'
     }

@@ -139,6 +139,15 @@ jobs:
               --name func-dont-lie-to-me-dev \
               --resource-group dont_lie_to_me \
               --query "[?name=='FUNCTIONS_WORKER_RUNTIME' || name=='FUNCTIONS_EXTENSION_VERSION' || name=='AzureWebJobsFeatureFlags' || name=='PYTHONPATH' || name=='SCM_DO_BUILD_DURING_DEPLOYMENT' || name=='ENABLE_ORYX_BUILD' || name=='WEBSITE_RUN_FROM_PACKAGE'].{name:name,value:value}" -o table || true
+            PACKAGE_URL=$(az functionapp config appsettings list \
+              --name func-dont-lie-to-me-dev \
+              --resource-group dont_lie_to_me \
+              --query "[?name=='WEBSITE_RUN_FROM_PACKAGE'].value | [0]" -o tsv || true)
+            if [ -n "$PACKAGE_URL" ]; then
+              echo "Inspecting deployment package contents..."
+              curl -sS -L "$PACKAGE_URL" -o package.zip || true
+              unzip -l package.zip | grep -E "function_app.py|host.json|requirements.txt|\.python_packages/lib/site-packages" | head -n 40 || true
+            fi
             echo "Latest deployment records:"
             az webapp log deployment list \
               --name func-dont-lie-to-me-dev \

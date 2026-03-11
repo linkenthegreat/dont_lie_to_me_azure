@@ -89,14 +89,19 @@ jobs:
             --template-file infra/main.bicep \
             --parameters environmentName=$ENVIRONMENT_NAME location=$AZURE_LOCATION aiDeploymentName=gpt-4o createRoleAssignments=false
 
+      - name: Install Python packages for deployment
+        run: |
+          pip install -r src/backend/requirements.txt \
+            --target src/backend/.python_packages/lib/site-packages \
+            --upgrade --quiet
+
       - name: Deploy to staging slot
         uses: Azure/functions-action@v1
         with:
           app-name: func-dont-lie-to-me-prod
           slot-name: staging
           package: src/backend
-          scm-do-build-during-deployment: true
-          enable-oryx-build: true
+          scm-do-build-during-deployment: false
 
       - name: Verify PYTHONPATH app setting is applied (staging)
         run: |
