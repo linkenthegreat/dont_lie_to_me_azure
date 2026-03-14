@@ -1,0 +1,10 @@
+greeting_patterns:
+  - "\\b(hello|hi|hey|greetings|good\\s+(morning|afternoon|evening))\\b"
+  - "\\b(help|assist|support)\\b"
+url_patterns:
+  - "https?://"
+  - "www\\."
+  - "\\b[a-zA-Z0-9-]+\\.(com|net|org|edu|gov|co\\.uk|au|nz)\\b"
+suspicious_keywords:
+  - "\\b(scam|fraud|phishing|suspicious|fake|impersonat\\w*|urgent|verify account|click here|claim prize)\\b"
+  - "\\b(bitcoin|crypto|investment|tax refund|lottery|inheritance)\\b"

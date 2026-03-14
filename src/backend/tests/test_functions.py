@@ -242,6 +242,57 @@ class TestAzureAIClient(unittest.TestCase):
 
         self.assertEqual(result, '{"classification": "SAFE"}')
 
+    @patch("shared.ai_client.AzureOpenAI")
+    @patch("shared.ai_client.get_secret")
+    def test_azure_client_resolves_api_key_from_keyvault(self, mock_get_secret, MockOpenAI):
+        """When AZURE_KEYVAULT_URL is set, AzureAIClient should resolve endpoint/key via get_secret."""
+        import os
+        from shared.ai_client import AzureAIClient
+
+        mock_client = MagicMock()
+        MockOpenAI.return_value = mock_client
+
+        # First call resolves endpoint secret, second resolves API key secret.
+        mock_get_secret.side_effect = [
+            "https://example-from-kv.openai.azure.com/",
+            "resolved-api-key-from-kv",
+        ]
+
+        with unittest.mock.patch.dict(
+            os.environ,
+            {
+                "AI_PROVIDER": "azure",
+                "AZURE_KEYVAULT_URL": "https://demo-kv.vault.azure.net/",
+                "AZURE_AI_ENDPOINT": "https://fallback-endpoint.openai.azure.com/",
+                "AZURE_AI_API_KEY": "AzureAIApiKey",  # secret name pattern from portal misconfiguration
+                "AZURE_AI_DEPLOYMENT_NAME": "gpt-4o",
+            },
+        ):
+            AzureAIClient()
+
+        MockOpenAI.assert_called_once()
+        kwargs = MockOpenAI.call_args.kwargs
+        self.assertEqual(kwargs["azure_endpoint"], "https://example-from-kv.openai.azure.com/")
+        self.assertEqual(kwargs["api_key"], "resolved-api-key-from-kv")
+
+    def test_azure_client_rejects_secret_name_as_api_key_without_kv_resolution(self):
+        """If API key equals the secret name literal, fail fast with a clear error."""
+        import os
+        from shared.ai_client import AzureAIClient
+
+        with unittest.mock.patch.dict(
+            os.environ,
+            {
+                "AI_PROVIDER": "azure",
+                "AZURE_AI_ENDPOINT": "https://example.openai.azure.com/",
+                "AZURE_AI_API_KEY": "AzureAIApiKey",
+                "AZURE_AI_DEPLOYMENT_NAME": "gpt-4o",
+                "AZURE_KEYVAULT_URL": "",  # no KV resolution path
+            },
+        ):
+            with self.assertRaises(EnvironmentError):
+                AzureAIClient()
+
 
 class TestKeyVaultHelper(unittest.TestCase):
     """Tests for shared/keyvault.py."""

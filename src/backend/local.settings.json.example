@@ -13,6 +13,8 @@
     "AZURE_AI_DEPLOYMENT_NAME": "gpt-4o",
     "AZURE_AI_API_VERSION": "2024-02-01",
     "AZURE_AI_API_KEY": "<your-api-key-or-use-managed-identity>",
+    "AZURE_AI_ENDPOINT_SECRET_NAME": "AzureAIEndpoint",
+    "AZURE_AI_API_KEY_SECRET_NAME": "AzureAIApiKey",
 
     "COSMOS_DB_CONNECTION_STRING": "",
     "COSMOS_DB_ENDPOINT": "https://<your-cosmos-account>.documents.azure.com:443/",

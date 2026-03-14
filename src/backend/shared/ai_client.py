@@ -9,6 +9,8 @@ import os
 import logging
 import json
 from openai import AzureOpenAI, OpenAI
+from shared import config
+from shared.keyvault import get_secret
 
 logger = logging.getLogger(__name__)
 
@@ -30,15 +32,13 @@ class AzureAIClient:
     """
 
     def __init__(self) -> None:
-        self._provider = os.environ.get("AI_PROVIDER", "azure").strip().lower()
+        self._provider = config.AI_PROVIDER().strip().lower()
         self._model = ""
 
         if self._provider == "github":
-            token = os.environ.get("GITHUB_TOKEN", "")
-            endpoint = os.environ.get(
-                "GITHUB_MODELS_ENDPOINT", "https://models.github.ai/inference"
-            )
-            self._model = os.environ.get("GITHUB_MODEL", "openai/gpt-4o-mini")
+            token = config.GITHUB_TOKEN()
+            endpoint = config.GITHUB_MODELS_ENDPOINT()
+            self._model = config.GITHUB_MODEL()
 
             if not token:
                 raise EnvironmentError(
@@ -54,10 +54,39 @@ class AzureAIClient:
             logger.info("AzureAIClient initialised with provider='mock'")
             return
 
-        endpoint = os.environ.get("AZURE_AI_ENDPOINT", "")
-        api_key = os.environ.get("AZURE_AI_API_KEY", "")
-        api_version = os.environ.get("AZURE_AI_API_VERSION", "2024-02-01")
-        self._model = os.environ.get("AZURE_AI_DEPLOYMENT_NAME", "gpt-4o")
+        endpoint = config.AZURE_AI_ENDPOINT().strip()
+        api_key = config.AZURE_AI_API_KEY().strip()
+        api_version = config.AZURE_AI_API_VERSION()
+        self._model = config.AZURE_AI_DEPLOYMENT_NAME()
+
+        # When Key Vault is configured, prefer resolving secrets by secret name
+        # with fallback to the normal environment variables.
+        if config.AZURE_KEYVAULT_URL():
+            try:
+                endpoint = get_secret(
+                    config.AZURE_AI_ENDPOINT_SECRET_NAME(),
+                    fallback_env_var="AZURE_AI_ENDPOINT",
+                ).strip()
+            except ValueError:
+                # Endpoint secret is optional if endpoint env var is already present.
+                pass
+
+            try:
+                api_key = get_secret(
+                    config.AZURE_AI_API_KEY_SECRET_NAME(),
+                    fallback_env_var="AZURE_AI_API_KEY",
+                ).strip()
+            except ValueError:
+                # If no API key can be resolved, we will fall back to managed identity.
+                api_key = ""
+
+        # Common misconfiguration: AZURE_AI_API_KEY contains the literal secret name.
+        # In that case, fail fast with a clear message instead of using it as an API key.
+        if api_key == config.AZURE_AI_API_KEY_SECRET_NAME():
+            raise EnvironmentError(
+                "AZURE_AI_API_KEY appears to be set to a Key Vault secret name, not a key value. "
+                "Use a Key Vault reference in app settings or grant managed identity access."
+            )
 
         if not endpoint:
             raise EnvironmentError("AZURE_AI_ENDPOINT environment variable is not set.")

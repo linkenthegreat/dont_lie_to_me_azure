@@ -79,17 +79,38 @@ jobs:
             --name "main-${AZURE_LOCATION}-${ENVIRONMENT_NAME}" \
             --location $AZURE_LOCATION \
             --template-file infra/main.bicep \
-            --parameters environmentName=$ENVIRONMENT_NAME location=$AZURE_LOCATION aiDeploymentName=gpt-4o createRoleAssignments=false
+            --parameters environmentName=$ENVIRONMENT_NAME location=$AZURE_LOCATION aiDeploymentName=gpt-4o createRoleAssignments=true
 
-      - name: Configure Function App AI settings (dev)
+      - name: Seed Key Vault Azure AI API key secret (dev)
+        run: |
+          DEPLOYMENT_NAME="main-${AZURE_LOCATION}-${ENVIRONMENT_NAME}"
+          KEYVAULT_URL=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query "properties.outputs.keyVaultUrl.value" -o tsv)
+          if [ -z "$KEYVAULT_URL" ]; then
+            echo "Failed to read keyVaultUrl from deployment outputs."
+            exit 1
+          fi
+
+          KEYVAULT_NAME=$(echo "$KEYVAULT_URL" | sed -E 's#https://([^./]+)\..*#\1#')
+
+          az keyvault secret set \
+            --vault-name "$KEYVAULT_NAME" \
+            --name AzureAIApiKey \
+            --value "${{ secrets.AZURE_AI_API_KEY }}" >/dev/null
+
+          echo "KEYVAULT_URL=$KEYVAULT_URL" >> "$GITHUB_ENV"
+          echo "KEYVAULT_NAME=$KEYVAULT_NAME" >> "$GITHUB_ENV"
+
+      - name: Configure Function App AI settings (dev, Key Vault refs)
         run: |
           az functionapp config appsettings set \
             --name func-dont-lie-to-me-dev \
             --resource-group dont_lie_to_me \
             --settings \
               AI_PROVIDER=azure \
+              AZURE_KEYVAULT_URL="$KEYVAULT_URL" \
+              AZURE_AI_API_KEY_SECRET_NAME=AzureAIApiKey \
               AZURE_AI_ENDPOINT="${{ secrets.AZURE_AI_ENDPOINT }}" \
-              AZURE_AI_API_KEY="${{ secrets.AZURE_AI_API_KEY }}"
+              AZURE_AI_API_KEY="@Microsoft.KeyVault(VaultName=${KEYVAULT_NAME};SecretName=AzureAIApiKey)"
 
       - name: Setup Python for deployment package
         uses: actions/setup-python@v5
