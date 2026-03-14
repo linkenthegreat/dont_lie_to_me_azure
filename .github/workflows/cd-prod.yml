@@ -130,7 +130,9 @@ jobs:
               AZURE_KEYVAULT_URL="$KEYVAULT_URL" \
               AZURE_AI_API_KEY_SECRET_NAME=AzureAIApiKey \
               AZURE_AI_ENDPOINT="${{ secrets.AZURE_AI_ENDPOINT }}" \
-              AZURE_AI_API_KEY="@Microsoft.KeyVault(VaultName=${KEYVAULT_NAME};SecretName=AzureAIApiKey)"
+              AZURE_AI_API_KEY="@Microsoft.KeyVault(VaultName=${KEYVAULT_NAME};SecretName=AzureAIApiKey)" \
+              GOOGLE_SAFE_BROWSING_API_KEY="@Microsoft.KeyVault(VaultName=${KEYVAULT_NAME};SecretName=GoogleSafeBrowsingApiKey)" \
+              URLHAUS_API_KEY="@Microsoft.KeyVault(VaultName=${KEYVAULT_NAME};SecretName=UrlhausApiKey)"
 
       - name: Setup Python for deployment package
         uses: actions/setup-python@v5
@@ -237,6 +239,19 @@ jobs:
             --slot staging \
             --target-slot production
 
+      - name: Derive Key Vault info from deployment outputs (prod/swap job)
+        run: |
+          DEPLOYMENT_NAME="main-${AZURE_LOCATION}-${ENVIRONMENT_NAME}"
+          KEYVAULT_URL=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query "properties.outputs.keyVaultUrl.value" -o tsv)
+          if [ -z "$KEYVAULT_URL" ]; then
+            echo "Failed to read keyVaultUrl from deployment outputs in swap job."
+            exit 1
+          fi
+          KEYVAULT_NAME=$(echo "$KEYVAULT_URL" | sed -E 's#https://([^./]+)\..*#\1#')
+          echo "KEYVAULT_URL=$KEYVAULT_URL" >> "$GITHUB_ENV"
+          echo "KEYVAULT_NAME=$KEYVAULT_NAME" >> "$GITHUB_ENV"
+          echo "Key Vault (swap job): $KEYVAULT_NAME ($KEYVAULT_URL)"
+
       - name: Configure Function App AI settings (production, Key Vault refs)
         run: |
           # Production is the root app (no --slot flag); there is no slot named "production"
@@ -248,7 +263,16 @@ jobs:
               AZURE_KEYVAULT_URL="$KEYVAULT_URL" \
               AZURE_AI_API_KEY_SECRET_NAME=AzureAIApiKey \
               AZURE_AI_ENDPOINT="${{ secrets.AZURE_AI_ENDPOINT }}" \
-              AZURE_AI_API_KEY="@Microsoft.KeyVault(VaultName=${KEYVAULT_NAME};SecretName=AzureAIApiKey)"
+              AZURE_AI_API_KEY="@Microsoft.KeyVault(VaultName=${KEYVAULT_NAME};SecretName=AzureAIApiKey)" \
+              GOOGLE_SAFE_BROWSING_API_KEY="@Microsoft.KeyVault(VaultName=${KEYVAULT_NAME};SecretName=GoogleSafeBrowsingApiKey)" \
+              URLHAUS_API_KEY="@Microsoft.KeyVault(VaultName=${KEYVAULT_NAME};SecretName=UrlhausApiKey)"
+
+      - name: Configure Function App CORS for SWA origin (production)
+        run: |
+          az functionapp cors add \
+            --name func-dont-lie-to-me-prod \
+            --resource-group dont_lie_to_me \
+            --allowed-origins "https://orange-tree-0244f1300.4.azurestaticapps.net"
 
       - name: Verify production health
         run: |
