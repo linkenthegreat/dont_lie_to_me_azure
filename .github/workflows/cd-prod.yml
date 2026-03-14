@@ -89,6 +89,17 @@ jobs:
             --template-file infra/main.bicep \
             --parameters environmentName=$ENVIRONMENT_NAME location=$AZURE_LOCATION aiDeploymentName=gpt-4o createRoleAssignments=false
 
+      - name: Configure Function App AI settings (staging)
+        run: |
+          az functionapp config appsettings set \
+            --name func-dont-lie-to-me-prod \
+            --resource-group dont_lie_to_me \
+            --slot staging \
+            --settings \
+              AI_PROVIDER=azure \
+              AZURE_AI_ENDPOINT="${{ secrets.AZURE_AI_ENDPOINT }}" \
+              AZURE_AI_API_KEY="${{ secrets.AZURE_AI_API_KEY }}"
+
       - name: Setup Python for deployment package
         uses: actions/setup-python@v5
         with:
@@ -192,6 +203,17 @@ jobs:
             --resource-group dont_lie_to_me \
             --slot staging \
             --target-slot production
+
+      - name: Configure Function App AI settings (production)
+        run: |
+          az functionapp config appsettings set \
+            --name func-dont-lie-to-me-prod \
+            --resource-group dont_lie_to_me \
+            --slot production \
+            --settings \
+              AI_PROVIDER=azure \
+              AZURE_AI_ENDPOINT="${{ secrets.AZURE_AI_ENDPOINT }}" \
+              AZURE_AI_API_KEY="${{ secrets.AZURE_AI_API_KEY }}"
 
       - name: Verify production health
         run: |

@@ -81,15 +81,15 @@ jobs:
             --template-file infra/main.bicep \
             --parameters environmentName=$ENVIRONMENT_NAME location=$AZURE_LOCATION aiDeploymentName=gpt-4o createRoleAssignments=false
 
-      - name: Configure AI provider settings
+      - name: Configure Function App AI settings (dev)
         run: |
           az functionapp config appsettings set \
             --name func-dont-lie-to-me-dev \
             --resource-group dont_lie_to_me \
             --settings \
-              "AI_PROVIDER=azure" \
-              "AZURE_AI_ENDPOINT=${{ secrets.AZURE_AI_ENDPOINT }}" \
-              "AZURE_AI_API_KEY=${{ secrets.AZURE_AI_API_KEY }}"
+              AI_PROVIDER=azure \
+              AZURE_AI_ENDPOINT="${{ secrets.AZURE_AI_ENDPOINT }}" \
+              AZURE_AI_API_KEY="${{ secrets.AZURE_AI_API_KEY }}"
 
       - name: Setup Python for deployment package
         uses: actions/setup-python@v5
