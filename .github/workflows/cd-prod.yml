@@ -150,6 +150,7 @@ jobs:
           slot-name: staging
           package: src/backend
           scm-do-build-during-deployment: false
+          respect-funcignore: true
 
       - name: Verify PYTHONPATH app setting is applied (staging)
         run: |

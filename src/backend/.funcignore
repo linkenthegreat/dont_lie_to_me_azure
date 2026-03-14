@@ -3,3 +3,11 @@ __pycache__
 .pytest_cache
 tests/
 *.pyc
+*.pyo
+*.pyd
+env/
+local.settings.json
+local.settings.json.backup
+.env
+.env.*
+*.md
