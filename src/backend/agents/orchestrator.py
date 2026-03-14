@@ -20,11 +20,12 @@ Design principles:
 import logging
 import re
 import time
+import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from .base_models import AgentRequest, AgentResponse, AgentContext, OrchestrationTrace
-from shared.url_checker import URLChecker
+from shared.url_checker import URLChecker, get_url_checker
 from shared.ai_client import AzureAIClient
 from shared.prompts import get_prompt_config
 
@@ -71,7 +72,7 @@ class OrchestratorAgent:
             raise
         
         try:
-            self.url_checker = url_checker or URLChecker()
+            self.url_checker = url_checker or get_url_checker()
         except Exception as e:
             logger.warning(f"Failed to initialize URL checker: {e}. Continuing without URL checking.", exc_info=True)
             self.url_checker = None
@@ -129,6 +130,14 @@ class OrchestratorAgent:
                 response = self._execute_receptionist(request)
                 routing_decision = f"Fallback: unknown target '{target_agent}'"
 
+            # Optional victim support escalation after investigation/receptionist handling.
+            support_needed = request.context.metadata.get("needs_victim_support", False) or self._detect_support_need(request.text)
+            if support_needed and target_agent in {"classifier", "receptionist"}:
+                support_response = self._execute_victim_support_team(request, response.data)
+                response = self._merge_agent_responses(response, support_response)
+                route_path.append("victim_support_team")
+                routing_decision = f"{routing_decision}; victim support escalation triggered"
+
             # Add orchestration metadata
             duration_ms = (time.time() - start_time) * 1000
             response.trace = OrchestrationTrace(
@@ -178,6 +187,10 @@ class OrchestratorAgent:
         for pattern in self.url_patterns:
             if re.search(pattern, request.text, re.IGNORECASE):
                 return "URL pattern detected", "url_analyzer"
+
+        # Rule 2.5: Image payloads route to investigator classifier chain.
+        if request.images:
+            return "Image input detected, routing to investigator chain", "classifier"
 
         # Rule 3: Suspicious content keywords → classifier chain
         for pattern in self.suspicious_keywords:
@@ -308,21 +321,35 @@ class OrchestratorAgent:
                 temperature=classifier_config.get("temperature", 0.2),
             )
 
-            import json
             classification_data = json.loads(classify_response)
             classification = classification_data.get("classification", "UNKNOWN")
             confidence = classification_data.get("confidence", 0.0)
 
-            # Step 2: If high risk, trigger deeper analysis
-            if classification in ["SCAM", "LIKELY_SCAM"] and confidence > 0.6:
-                analyzer_config = get_prompt_config("message_analyzer")
-                analysis_response = self.ai_client.chat(
+            # Always-on image path for PoC: analyze visible text/context and image forensics.
+            analysis_data = None
+            image_analysis = None
+            analyzer_config = get_prompt_config("message_analyzer")
+            if request.images:
+                analysis_raw = self.ai_client.chat_with_image(
                     system_prompt=analyzer_config.get("system_prompt", ""),
                     user_message=request.text,
+                    image_base64=request.images[0],
                     max_tokens=analyzer_config.get("max_tokens", 1000),
                     temperature=analyzer_config.get("temperature", 0.3),
                 )
-                analysis_data = json.loads(analysis_response)
+                analysis_data = json.loads(analysis_raw)
+                image_analysis = self._run_image_forensics(request.images[0])
+
+            # Step 2: If high risk, trigger deeper analysis
+            if classification in ["SCAM", "LIKELY_SCAM"] and confidence > 0.6:
+                if analysis_data is None:
+                    analysis_response = self.ai_client.chat(
+                        system_prompt=analyzer_config.get("system_prompt", ""),
+                        user_message=request.text,
+                        max_tokens=analyzer_config.get("max_tokens", 1000),
+                        temperature=analyzer_config.get("temperature", 0.3),
+                    )
+                    analysis_data = json.loads(analysis_response)
 
                 # Step 3: Generate guidance
                 guidance_config = get_prompt_config("guidance_generator")
@@ -345,6 +372,7 @@ class OrchestratorAgent:
                         "confidence": confidence,
                         "reasoning": classification_data.get("reasoning", ""),
                         "analysis": analysis_data,
+                        "image_analysis": image_analysis,
                         "guidance": guidance_data,
                     },
                     agent_used="classifier_chain",
@@ -359,6 +387,8 @@ class OrchestratorAgent:
                 # Low risk - just classification
                 message = f"Classification: **{classification}** (Confidence: {confidence:.0%})\n\n"
                 message += f"Reasoning: {classification_data.get('reasoning', 'No additional details')}"
+                if analysis_data:
+                    message += f"\n\nImage content analysis: {analysis_data.get('summary', 'Available in structured data')}."
 
                 return AgentResponse(
                     message=message,
@@ -366,6 +396,8 @@ class OrchestratorAgent:
                         "classification": classification,
                         "confidence": confidence,
                         "reasoning": classification_data.get("reasoning", ""),
+                        "analysis": analysis_data,
+                        "image_analysis": image_analysis,
                     },
                     agent_used="classifier",
                     trace=OrchestrationTrace(
@@ -389,3 +421,76 @@ class OrchestratorAgent:
                     fallback_triggered=True,
                 ),
             )
+
+    def _run_image_forensics(self, image_data: str) -> Optional[Dict[str, Any]]:
+        """Best-effort image authenticity analysis using existing service."""
+        try:
+            from services.image_analysis_service import analyze_image
+
+            raw_image = image_data.split(",", 1)[1] if image_data.startswith("data:") and "," in image_data else image_data
+            return analyze_image(raw_image)
+        except Exception as exc:
+            logger.warning("Image forensics skipped due to error: %s", exc)
+            return None
+
+    def _detect_support_need(self, text: str) -> bool:
+        """Detect whether victim support should be engaged from user text."""
+        lowered = (text or "").lower()
+        support_patterns = [
+            r"\b(lost money|money lost|sent money|transferred money)\b",
+            r"\b(shared (my )?(password|otp|code|bank details|personal information|id))\b",
+            r"\b(how do i report|report this|contact police|law enforcement|scamwatch|ftc|ic3)\b",
+        ]
+        return any(re.search(pattern, lowered) for pattern in support_patterns)
+
+    def _execute_victim_support_team(self, request: AgentRequest, investigation_data: Dict[str, Any]) -> AgentResponse:
+        """Execute victim support team helpers and return merged support guidance."""
+        from .report_helper import ReportHelperAgent
+        from .resource_assistant import ResourceAssistantAgent
+
+        support_context = request.context.model_copy(deep=True)
+        support_context.metadata.update(investigation_data or {})
+
+        support_request = AgentRequest(
+            text=request.text,
+            images=request.images,
+            context=support_context,
+        )
+
+        resource_agent = ResourceAssistantAgent(ai_client=self.ai_client)
+        report_agent = ReportHelperAgent(ai_client=self.ai_client)
+
+        resource_response = resource_agent.execute(support_request)
+        report_response = report_agent.execute(support_request)
+
+        merged_data = {}
+        merged_data.update(resource_response.data)
+        merged_data.update(report_response.data)
+
+        return AgentResponse(
+            message=(
+                "I can help with next reporting steps as well. "
+                "I've prepared location-specific contacts and a draft report you can use immediately."
+            ),
+            data=merged_data,
+            agent_used="victim_support_team",
+            trace=OrchestrationTrace(
+                route_path=["orchestrator", "victim_support_team", "resource_assistant", "report_helper"],
+                routing_decision="Victim support escalation based on conversation signals",
+                duration_ms=0,
+                model_used="gpt-4o",
+            ),
+        )
+
+    def _merge_agent_responses(self, primary: AgentResponse, secondary: AgentResponse) -> AgentResponse:
+        """Merge a secondary agent output into the primary response without breaking schema."""
+        merged_data = dict(primary.data)
+        merged_data.update(secondary.data)
+
+        return AgentResponse(
+            message=f"{primary.message}\n\n{secondary.message}",
+            data=merged_data,
+            agent_used=primary.agent_used,
+            trace=primary.trace,
+            next_action=primary.next_action,
+        )

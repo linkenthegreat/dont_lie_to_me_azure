@@ -146,5 +146,38 @@ class TestCheckURLRequest(unittest.TestCase):
         self.assertTrue(req.use_cache)
 
 
+class TestURLCheckerFactory(unittest.TestCase):
+    """Tests for Key Vault/env-backed URL checker factory."""
+
+    @patch("shared.url_checker.URLChecker")
+    @patch("shared.keyvault.get_secret")
+    def test_get_url_checker_resolves_both_secrets(self, mock_get_secret, mock_url_checker):
+        from shared.url_checker import get_url_checker
+
+        mock_get_secret.side_effect = ["google-secret", "urlhaus-secret"]
+
+        get_url_checker()
+
+        self.assertEqual(mock_get_secret.call_count, 2)
+        mock_url_checker.assert_called_once_with(
+            google_sb_api_key="google-secret",
+            urlhaus_api_key="urlhaus-secret",
+        )
+
+    @patch("shared.url_checker.URLChecker")
+    @patch("shared.keyvault.get_secret")
+    def test_get_url_checker_tolerates_missing_urlhaus_secret(self, mock_get_secret, mock_url_checker):
+        from shared.url_checker import get_url_checker
+
+        mock_get_secret.side_effect = ["google-secret", ValueError("missing urlhaus")]
+
+        get_url_checker()
+
+        mock_url_checker.assert_called_once_with(
+            google_sb_api_key="google-secret",
+            urlhaus_api_key=None,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

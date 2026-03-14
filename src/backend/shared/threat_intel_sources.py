@@ -158,9 +158,15 @@ class GoogleSafeBrowsingClient:
 class URLhausClient:
     """Client for URLhaus API (abuse.ch)."""
 
-    def __init__(self):
-        """Initialize URLhaus client (no API key required)."""
+    def __init__(self, api_key: Optional[str] = None):
+        """Initialize URLhaus client.
+
+        The community API may work without authentication for some queries, but
+        we accept an optional Auth-Key so local settings and Azure Key Vault can
+        provide it consistently.
+        """
         self.base_url = URLHAUS_API_URL
+        self.api_key = api_key or os.getenv("URLHAUS_API_KEY")
 
     def check_url(self, url: str) -> URLhausResult:
         """
@@ -177,10 +183,14 @@ class URLhausClient:
         try:
             # URLhaus expects URL as a form parameter
             payload = {"url": url}
+            headers = {}
+            if self.api_key:
+                headers["Auth-Key"] = self.api_key
 
             response = requests.post(
                 self.base_url,
                 data=payload,
+                headers=headers or None,
                 timeout=URLHAUS_TIMEOUT_SECONDS,
             )
             response.raise_for_status()

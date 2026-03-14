@@ -28,6 +28,30 @@ from shared.url_validators import normalize_url, is_valid_url
 from shared.threat_intel_sources import GoogleSafeBrowsingClient, URLhausClient
 from shared.risk_hints import analyze_url_hints
 
+
+def get_url_checker() -> "URLChecker":
+    """Factory that resolves threat-intel secrets from Azure Key Vault when
+    available, with local environment fallback for development.
+    """
+    from shared import config
+    from shared.keyvault import get_secret
+
+    google_sb_api_key = get_secret(
+        config.GOOGLE_SB_API_KEY_SECRET,
+        fallback_env_var=config.GOOGLE_SB_API_KEY_ENV_VAR,
+    )
+    try:
+        urlhaus_api_key = get_secret(
+            config.URLHAUS_API_KEY_SECRET,
+            fallback_env_var=config.URLHAUS_API_KEY_ENV_VAR,
+        )
+    except ValueError:
+        urlhaus_api_key = None
+    return URLChecker(
+        google_sb_api_key=google_sb_api_key,
+        urlhaus_api_key=urlhaus_api_key,
+    )
+
 logger = logging.getLogger(__name__)
 
 # Configuration (should come from environment)
@@ -41,6 +65,7 @@ class URLChecker:
     def __init__(
         self,
         google_sb_api_key: Optional[str] = None,
+        urlhaus_api_key: Optional[str] = None,
         cache_ttl_seconds: Optional[int] = None,
         timeout_seconds: Optional[int] = None,
     ):
@@ -49,6 +74,7 @@ class URLChecker:
 
         Args:
             google_sb_api_key: Optional Google Safe Browsing API key.
+            urlhaus_api_key: Optional URLhaus API key.
             cache_ttl_seconds: Optional cache TTL in seconds.
             timeout_seconds: Optional timeout for checks in seconds.
 
@@ -61,7 +87,7 @@ class URLChecker:
             logger.error("Failed to initialize Google Safe Browsing client: %s", e)
             raise
 
-        self.urlhaus_client = URLhausClient()
+        self.urlhaus_client = URLhausClient(api_key=urlhaus_api_key)
         self.cache_ttl_seconds = cache_ttl_seconds or DEFAULT_CACHE_TTL_SECONDS
         self.timeout_seconds = timeout_seconds or DEFAULT_CHECK_TIMEOUT_SECONDS
 

@@ -209,6 +209,24 @@ class TestOrchestratorRouting:
         assert target == "classifier"
         assert "suspicious" in reasoning.lower() or "keyword" in reasoning.lower()
 
+    def test_image_routes_to_classifier_chain(self, orchestrator, base_context):
+        """Image requests should route to investigator/classifier chain in PoC mode."""
+        request = AgentRequest(
+            text="Please check this screenshot",
+            images=["data:image/png;base64,AAAA"],
+            context=base_context,
+        )
+
+        reasoning, target = orchestrator._route(request)
+
+        assert target == "classifier"
+        assert "image" in reasoning.lower()
+
+    def test_detect_support_need_from_text(self, orchestrator):
+        """Victim support keyword detector should trigger on reporting/loss signals."""
+        assert orchestrator._detect_support_need("I lost money and need to report this") is True
+        assert orchestrator._detect_support_need("hello, can you help?") is False
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -17,6 +17,8 @@ from .base_models import (
 )
 from .orchestrator import OrchestratorAgent
 from .receptionist import ReceptionistAgent
+from .report_helper import ReportHelperAgent
+from .resource_assistant import ResourceAssistantAgent
 
 __all__ = [
     "AgentRequest",
@@ -25,4 +27,6 @@ __all__ = [
     "OrchestrationTrace",
     "OrchestratorAgent",
     "ReceptionistAgent",
+    "ReportHelperAgent",
+    "ResourceAssistantAgent",
 ]

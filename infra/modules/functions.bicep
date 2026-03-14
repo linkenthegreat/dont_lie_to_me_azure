@@ -122,6 +122,10 @@ var sharedSiteConfig = {
       value: '2024-02-01'
     }
     {
+      name: 'AI_PROVIDER'
+      value: 'azure'
+    }
+    {
       name: 'AZURE_REDIS_CONNECTION_STRING'
       value: redisConnectionString
     }

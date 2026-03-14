@@ -24,6 +24,9 @@
     "TEAMS_WEBHOOK_URL": "<your-teams-incoming-webhook-url>",
 
     "AZURE_KEYVAULT_URL": "https://<your-keyvault-name>.vault.azure.net/",
-    "STORAGE_ACCOUNT_CONNECTION_STRING": "DefaultEndpointsProtocol=https;AccountName=<your-account>;AccountKey=<your-key>;EndpointSuffix=core.windows.net"
+    "STORAGE_ACCOUNT_CONNECTION_STRING": "DefaultEndpointsProtocol=https;AccountName=<your-account>;AccountKey=<your-key>;EndpointSuffix=core.windows.net",
+
+    "GOOGLE_SAFE_BROWSING_API_KEY": "<google-safe-browsing-api-key>",
+    "URLHAUS_API_KEY": "<urlhaus-auth-key>"
   }
 }
