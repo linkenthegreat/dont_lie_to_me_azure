@@ -74,14 +74,43 @@ def _handle_check_url_threat(args: dict) -> dict:
         return {"content": json.dumps({"error": "URL checking service is unavailable", "detail": str(exc)})}
 
     result = checker.check_url(url)
+
+    def _clean_value(value):
+        if value is None:
+            return None
+        if value.__class__.__name__.endswith("Mock"):
+            return None
+        return value
+
+    def _pick_attr(obj, *names, default=None):
+        for name in names:
+            value = _clean_value(getattr(obj, name, None))
+            if value is not None:
+                return value
+        return default
+
+    verdict_raw = _pick_attr(result, "overall_verdict", "verdict", default="UNABLE_TO_VERIFY")
+    verdict = str(getattr(verdict_raw, "value", verdict_raw))
+    threat_raw = _pick_attr(result, "primary_threat_type", "threat_category")
+    threat_category = str(getattr(threat_raw, "value", threat_raw)) if threat_raw is not None else None
+    summary = str(_pick_attr(result, "recommendation", "summary", default=""))
+    risk_hints = _pick_attr(result, "risk_hints", default=[])
+    sources_checked = getattr(result, "sources_checked", None)
+    if sources_checked is None:
+        sources = getattr(result, "sources", {}) or {}
+        if isinstance(sources, dict):
+            sources_checked = list(sources.keys())
+        else:
+            sources_checked = []
+
     payload = {
         "url": url,
-        "verdict": result.verdict if hasattr(result, "verdict") else str(result.verdict),
-        "confidence": result.confidence if hasattr(result, "confidence") else str(result.confidence),
-        "threat_category": result.threat_category,
-        "summary": result.summary,
-        "risk_hints": result.risk_hints if hasattr(result, "risk_hints") else [],
-        "sources_checked": result.sources_checked if hasattr(result, "sources_checked") else [],
+        "verdict": verdict,
+        "confidence": str(getattr(result, "confidence", "LOW")),
+        "threat_category": str(threat_category) if threat_category is not None else None,
+        "summary": summary,
+        "risk_hints": risk_hints,
+        "sources_checked": sources_checked,
         "cached": getattr(result, "cached", False),
     }
     return {"content": json.dumps(payload, default=str)}

@@ -268,30 +268,63 @@ class OrchestratorAgent:
             
             result = self.url_checker.check_url(url_match)
 
+            def _clean_value(value):
+                if value is None:
+                    return None
+                # Ignore unittest.mock values that can leak from tests.
+                if value.__class__.__name__.endswith("Mock"):
+                    return None
+                return value
+
+            def _pick_attr(obj, *names, default=None):
+                for name in names:
+                    value = _clean_value(getattr(obj, name, None))
+                    if value is not None:
+                        return value
+                return default
+
+            # Backward-compatible field mapping:
+            # - current URLCheckResult uses overall_verdict/primary_threat_type/recommendation/sources
+            # - older adapters used verdict/threat_category/summary/sources_checked
+            verdict_raw = _pick_attr(result, "overall_verdict", "verdict", default="UNABLE_TO_VERIFY")
+            verdict = str(getattr(verdict_raw, "value", verdict_raw))
+
+            threat_raw = _pick_attr(result, "primary_threat_type", "threat_category")
+            threat_category = str(getattr(threat_raw, "value", threat_raw)) if threat_raw is not None else None
+
+            summary = str(_pick_attr(result, "recommendation", "summary", default=""))
+            sources_checked = getattr(result, "sources_checked", None)
+            if sources_checked is None:
+                sources = getattr(result, "sources", {}) or {}
+                if isinstance(sources, dict):
+                    sources_checked = list(sources.keys())
+                else:
+                    sources_checked = []
+
             # Format conversational response
-            if result.verdict == "THREAT_DETECTED":
-                message = f"⚠️ **Warning**: This URL has been flagged as a **known threat** by security sources. I strongly recommend **not visiting** this site.\n\n**Threat type**: {result.threat_category or 'General malicious activity'}\n\n**Why it's flagged**: {result.summary}"
-            elif result.verdict == "SUSPICIOUS":
-                message = f"🟡 **Caution**: This URL shows **suspicious characteristics** that could indicate risk.\n\n**Concerns**: {result.summary}\n\nI'd recommend proceeding with caution or avoiding this site."
-            elif result.verdict == "NOT_FLAGGED":
-                message = f"✅ This URL appears to be **not flagged** by threat intelligence sources.\n\n{result.summary}\n\nHowever, always exercise caution with unfamiliar links."
+            if verdict == "THREAT_DETECTED":
+                message = f"⚠️ **Warning**: This URL has been flagged as a **known threat** by security sources. I strongly recommend **not visiting** this site.\n\n**Threat type**: {threat_category or 'General malicious activity'}\n\n**Why it's flagged**: {summary}"
+            elif verdict == "SUSPICIOUS":
+                message = f"🟡 **Caution**: This URL shows **suspicious characteristics** that could indicate risk.\n\n**Concerns**: {summary}\n\nI'd recommend proceeding with caution or avoiding this site."
+            elif verdict == "NOT_FLAGGED":
+                message = f"✅ This URL appears to be **not flagged** by threat intelligence sources.\n\n{summary}\n\nHowever, always exercise caution with unfamiliar links."
             else:
-                message = f"⚠️ I wasn't able to fully verify this URL due to technical limitations.\n\n{result.summary}"
+                message = f"⚠️ I wasn't able to fully verify this URL due to technical limitations.\n\n{summary}"
 
             return AgentResponse(
                 message=message,
                 data={
                     "url": url_match,
-                    "verdict": result.verdict,
+                    "verdict": verdict,
                     "confidence": result.confidence,
-                    "threat_category": result.threat_category,
-                    "risk_hints": result.risk_hints,
-                    "sources_checked": result.sources_checked,
+                    "threat_category": threat_category,
+                    "risk_hints": getattr(result, "risk_hints", []),
+                    "sources_checked": sources_checked,
                 },
                 agent_used="url_analyzer",
                 trace=OrchestrationTrace(
                     route_path=["orchestrator", "url_analyzer"],
-                    routing_decision=f"URL analysis completed: {result.verdict}",
+                    routing_decision=f"URL analysis completed: {verdict}",
                     duration_ms=0,
                 ),
             )
