@@ -83,11 +83,15 @@ jobs:
 
       - name: Deploy infrastructure (Bicep)
         run: |
+          # createRoleAssignments=false: the CD service principal only has Contributor, not Owner/UAA.
+          # The Key Vault Secrets User role assignment for the Function App managed identity
+          # must be created once manually (see docs/setup.md) or by granting the SP
+          # User Access Administrator on the resource group and switching back to true.
           az deployment sub create \
             --name "main-${AZURE_LOCATION}-${ENVIRONMENT_NAME}" \
             --location $AZURE_LOCATION \
             --template-file infra/main.bicep \
-            --parameters environmentName=$ENVIRONMENT_NAME location=$AZURE_LOCATION aiDeploymentName=gpt-4o createRoleAssignments=true
+            --parameters environmentName=$ENVIRONMENT_NAME location=$AZURE_LOCATION aiDeploymentName=gpt-4o createRoleAssignments=false
 
       - name: Seed Key Vault Azure AI API key secret (prod)
         run: |
@@ -227,10 +231,10 @@ jobs:
 
       - name: Configure Function App AI settings (production, Key Vault refs)
         run: |
+          # Production is the root app (no --slot flag); there is no slot named "production"
           az functionapp config appsettings set \
             --name func-dont-lie-to-me-prod \
             --resource-group dont_lie_to_me \
-            --slot production \
             --settings \
               AI_PROVIDER=azure \
               AZURE_KEYVAULT_URL="$KEYVAULT_URL" \
