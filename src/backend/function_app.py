@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 import azure.functions as func
 from shared.ai_client import AzureAIClient
 from shared.prompts import get_prompt_config
-from shared.url_checker import URLChecker
+from shared.url_checker import URLChecker, get_url_checker
 from shared.models import CheckURLRequest, CheckURLResponse
 
 # Use anonymous auth by default so browser clients can call public endpoints
@@ -72,11 +72,11 @@ _url_checker = None
 
 
 def _get_url_checker() -> URLChecker:
-    """Lazy initialization of URL checker."""
+    """Lazy initialization of URL checker (key resolved from Key Vault or env)."""
     global _url_checker
     if _url_checker is None:
         try:
-            _url_checker = URLChecker()
+            _url_checker = get_url_checker()
         except ValueError as e:
             logger.error("Failed to initialize URL checker: %s", e)
     return _url_checker

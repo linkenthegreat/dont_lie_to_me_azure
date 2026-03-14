@@ -21,8 +21,12 @@ def mock_ai_client():
 
 @pytest.fixture
 def mock_url_checker():
-    """Mock URL checker to avoid real API calls."""
-    with patch("agents.orchestrator.URLChecker") as mock_checker_class:
+    """Mock URL checker to avoid real API calls.
+
+    Patches the get_url_checker factory used by OrchestratorAgent so the
+    test never needs a real GOOGLE_SAFE_BROWSING_API_KEY.
+    """
+    with patch("agents.orchestrator.get_url_checker") as mock_factory:
         mock_instance = MagicMock()
         mock_result = MagicMock()
         mock_result.verdict = "NOT_FLAGGED"
@@ -32,7 +36,7 @@ def mock_url_checker():
         mock_result.risk_hints = []
         mock_result.sources_checked = ["virustotal", "gsb"]
         mock_instance.check_url.return_value = mock_result
-        mock_checker_class.return_value = mock_instance
+        mock_factory.return_value = mock_instance
         yield mock_instance
 
 
@@ -199,6 +203,86 @@ class TestChatEndpoint:
         assert "duration_ms" in trace
         assert isinstance(trace["route_path"], list)
         assert len(trace["route_path"]) > 0
+
+    def test_victim_support_team_activated_when_flag_set(self, mock_ai_client):
+        """When metadata.needs_victim_support=True the orchestrator must run the
+        victim support team and include reporting_agencies in the response data."""
+        import azure.functions as func
+
+        # ReportHelperAgent and ResourceAssistantAgent both call ai_client.chat —
+        # configure mock to return a JSON payload for the support team calls.
+        support_payload = json.dumps({
+            "reporting_agencies": [{"name": "Action Fraud", "url": "https://www.actionfraud.police.uk"}],
+            "legal_guidance": "Contact your bank immediately.",
+            "report_summary": "Victim lost funds to a romance scam.",
+            "formal_email_draft": "Dear officer, ...",
+            "script_notes": "Ask for a crime reference number.",
+            "draft_email": "To whom it may concern, ...",
+        })
+        mock_ai_client.chat.return_value = support_payload
+
+        req_body = {
+            "message": "I already sent them £500 and my bank details. What should I do?",
+            "session_id": "test_victim_support_001",
+            "context": {
+                "metadata": {"needs_victim_support": True},
+            },
+        }
+
+        req = func.HttpRequest(
+            method="POST",
+            url="/api/chat",
+            body=json.dumps(req_body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+
+        from function_app import chat
+        response = chat(req)
+
+        assert response.status_code == 200
+        data = json.loads(response.get_body())
+
+        # Victim support team must be reflected somewhere in the trace path
+        route_path = data.get("trace", {}).get("route_path", [])
+        assert any("victim_support" in str(step).lower() or "resource_assistant" in str(step).lower()
+                   or "report_helper" in str(step).lower()
+                   for step in route_path), (
+            f"Expected victim support agents in route_path but got: {route_path}"
+        )
+
+    def test_detect_support_need_from_message_text(self, mock_ai_client):
+        """When message explicitly mentions lost money the orchestrator should
+        activate victim support team even without metadata flag."""
+        import azure.functions as func
+
+        support_payload = json.dumps({
+            "reporting_agencies": [{"name": "ACCC Scamwatch", "url": "https://www.scamwatch.gov.au"}],
+            "legal_guidance": "Report to your bank within 24 hours.",
+            "report_summary": "Possible wire fraud.",
+            "formal_email_draft": "Dear officer, ...",
+            "script_notes": "Mention the amounts transferred.",
+            "draft_email": "To whom it may concern, ...",
+        })
+        mock_ai_client.chat.return_value = support_payload
+
+        req_body = {
+            "message": "I lost money to a scammer who pretended to be my bank",
+            "session_id": "test_victim_detect_001",
+        }
+
+        req = func.HttpRequest(
+            method="POST",
+            url="/api/chat",
+            body=json.dumps(req_body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+
+        from function_app import chat
+        response = chat(req)
+
+        assert response.status_code == 200
+        data = json.loads(response.get_body())
+        assert "message" in data
 
 
 if __name__ == "__main__":

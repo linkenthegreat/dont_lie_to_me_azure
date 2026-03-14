@@ -30,3 +30,14 @@ COSMOS_DB_CONTAINER = lambda: get("COSMOS_DB_CONTAINER", "analyses")
 
 # Key Vault
 AZURE_KEYVAULT_URL = lambda: get("AZURE_KEYVAULT_URL")
+
+# Threat Intelligence
+# On Azure: secret name in Key Vault is "GoogleSafeBrowsingApiKey".
+# Locally: read from GOOGLE_SAFE_BROWSING_API_KEY in env/.env.
+GOOGLE_SB_API_KEY_SECRET = "GoogleSafeBrowsingApiKey"
+GOOGLE_SB_API_KEY_ENV_VAR = "GOOGLE_SAFE_BROWSING_API_KEY"
+
+# On Azure: secret name in Key Vault is "UrlhausApiKey".
+# Locally: read from URLHAUS_API_KEY in local.settings.json or env/.env.
+URLHAUS_API_KEY_SECRET = "UrlhausApiKey"
+URLHAUS_API_KEY_ENV_VAR = "URLHAUS_API_KEY"

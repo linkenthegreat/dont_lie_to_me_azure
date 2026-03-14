@@ -54,6 +54,80 @@ def _handle_check_known_scam(args: dict) -> dict:
     return {"content": json.dumps(matches, default=str)}
 
 
+# Maximum base64 characters accepted for the image MCP tool (~1 MB raw → ~1.4 MB base64).
+# Prevents oversized JSON payloads from exhausting function memory.
+_IMAGE_MCP_MAX_BASE64_CHARS = 1_400_000
+
+
+def _handle_check_url_threat(args: dict) -> dict:
+    """Check a URL against threat intelligence sources (Google Safe Browsing + URLhaus + risk hints)."""
+    url = args.get("url", "").strip()
+    if not url:
+        return {"content": json.dumps({"error": "url argument is required"})}
+
+    from shared.url_checker import get_url_checker
+
+    try:
+        checker = get_url_checker()
+    except ValueError as exc:
+        logger.warning("URL checker unavailable: %s", exc)
+        return {"content": json.dumps({"error": "URL checking service is unavailable", "detail": str(exc)})}
+
+    result = checker.check_url(url)
+    payload = {
+        "url": url,
+        "verdict": result.verdict if hasattr(result, "verdict") else str(result.verdict),
+        "confidence": result.confidence if hasattr(result, "confidence") else str(result.confidence),
+        "threat_category": result.threat_category,
+        "summary": result.summary,
+        "risk_hints": result.risk_hints if hasattr(result, "risk_hints") else [],
+        "sources_checked": result.sources_checked if hasattr(result, "sources_checked") else [],
+        "cached": getattr(result, "cached", False),
+    }
+    return {"content": json.dumps(payload, default=str)}
+
+
+def _handle_analyze_image_authenticity(args: dict) -> dict:
+    """Analyze an image for signs of manipulation, AI generation, or deepfake."""
+    image_data = args.get("image_base64", "").strip()
+    if not image_data:
+        return {"content": json.dumps({"error": "image_base64 argument is required"})}
+
+    # Strip data URI prefix if present (e.g. "data:image/png;base64,...")
+    if image_data.startswith("data:"):
+        comma_pos = image_data.find(",")
+        if comma_pos != -1:
+            image_data = image_data[comma_pos + 1:]
+
+    # Size guard: reject excessively large payloads
+    if len(image_data) > _IMAGE_MCP_MAX_BASE64_CHARS:
+        return {
+            "content": json.dumps({
+                "error": "Image too large",
+                "detail": f"base64 length {len(image_data)} exceeds limit {_IMAGE_MCP_MAX_BASE64_CHARS}",
+            })
+        }
+
+    image_media_type = args.get("image_media_type", "image/png")
+
+    from services.image_analysis_service import analyze_image
+
+    try:
+        result = analyze_image(image_base64=image_data, image_media_type=image_media_type)
+    except Exception as exc:
+        logger.exception("Image analysis failed")
+        return {"content": json.dumps({"error": "Image analysis failed", "detail": str(exc)})}
+
+    # Return bounded output — callers only need the top-level summary fields
+    payload = {
+        "verdict": result.get("verdict", "INCONCLUSIVE"),
+        "authenticity_score": result.get("authenticity_score"),
+        "manipulation_indicators": result.get("manipulation_indicators", []),
+        "summary": result.get("summary", ""),
+    }
+    return {"content": json.dumps(payload, default=str)}
+
+
 # ---------------------------------------------------------------------------
 # Registration (decorators must be applied on the FunctionApp)
 # ---------------------------------------------------------------------------
@@ -108,3 +182,32 @@ def register_mcp_tools(app):
         request = json.loads(context)
         args = request.get("arguments", {})
         return json.dumps(_handle_check_known_scam(args))
+
+    @app.generic_trigger(
+        arg_name="context",
+        type="mcpToolTrigger",
+        toolName="check_url_threat",
+        description="Check a URL against threat intelligence sources (Google Safe Browsing, URLhaus, local risk hints). Returns verdict, confidence, and threat summary.",
+        toolProperties=json.dumps([
+            {"propertyName": "url", "propertyType": "string", "description": "The URL to check for threats (must be a valid http/https URL)"},
+        ]),
+    )
+    def check_url_threat(context: str) -> str:
+        request = json.loads(context)
+        args = request.get("arguments", {})
+        return json.dumps(_handle_check_url_threat(args))
+
+    @app.generic_trigger(
+        arg_name="context",
+        type="mcpToolTrigger",
+        toolName="analyze_image_authenticity",
+        description="Analyze an image for manipulation, AI generation, or deepfake artifacts. Returns verdict, authenticity score, and manipulation indicators.",
+        toolProperties=json.dumps([
+            {"propertyName": "image_base64", "propertyType": "string", "description": "Base64-encoded image data, with or without a data URI prefix (data:image/...;base64,...)"},
+            {"propertyName": "image_media_type", "propertyType": "string", "description": "MIME type of the image, e.g. image/png or image/jpeg (default: image/png)"},
+        ]),
+    )
+    def analyze_image_authenticity(context: str) -> str:
+        request = json.loads(context)
+        args = request.get("arguments", {})
+        return json.dumps(_handle_analyze_image_authenticity(args))
