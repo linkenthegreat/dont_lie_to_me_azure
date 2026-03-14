@@ -122,13 +122,19 @@ class OrchestratorAgent:
                 response = self._execute_receptionist(request)
             elif target_agent == "url_analyzer":
                 response = self._execute_url_analyzer(request)
-            elif target_agent == "classifier":
+            elif target_agent in {"classifier", "investigator_team"}:
                 response = self._execute_classifier_chain(request)
             else:
                 # Fallback to receptionist
                 logger.warning(f"Unknown target agent '{target_agent}', falling back to receptionist")
                 response = self._execute_receptionist(request)
                 routing_decision = f"Fallback: unknown target '{target_agent}'"
+
+            # If receptionist emits a structured support signal, merge it into metadata.
+            if target_agent == "receptionist":
+                support_signal = self._extract_support_signal(response.message)
+                if support_signal:
+                    request.context.metadata.update(support_signal)
 
             # Optional victim support escalation after investigation/receptionist handling.
             support_needed = request.context.metadata.get("needs_victim_support", False) or self._detect_support_need(request.text)
@@ -188,14 +194,14 @@ class OrchestratorAgent:
             if re.search(pattern, request.text, re.IGNORECASE):
                 return "URL pattern detected", "url_analyzer"
 
-        # Rule 2.5: Image payloads route to investigator classifier chain.
+        # Rule 2.5: Image payloads route to investigator team.
         if request.images:
-            return "Image input detected, routing to investigator chain", "classifier"
+            return "Image input detected, routing to investigator team", "investigator_team"
 
-        # Rule 3: Suspicious content keywords → classifier chain
+        # Rule 3: Suspicious content keywords → investigator team
         for pattern in self.suspicious_keywords:
             if re.search(pattern, text_lower, re.IGNORECASE):
-                return "Suspicious content keywords detected", "classifier"
+                return "Suspicious content keywords detected", "investigator_team"
 
         # Rule 4: Default → receptionist for clarification
         return "No specific pattern matched, routing to receptionist for clarification", "receptionist"
@@ -262,30 +268,63 @@ class OrchestratorAgent:
             
             result = self.url_checker.check_url(url_match)
 
+            def _clean_value(value):
+                if value is None:
+                    return None
+                # Ignore unittest.mock values that can leak from tests.
+                if value.__class__.__name__.endswith("Mock"):
+                    return None
+                return value
+
+            def _pick_attr(obj, *names, default=None):
+                for name in names:
+                    value = _clean_value(getattr(obj, name, None))
+                    if value is not None:
+                        return value
+                return default
+
+            # Backward-compatible field mapping:
+            # - current URLCheckResult uses overall_verdict/primary_threat_type/recommendation/sources
+            # - older adapters used verdict/threat_category/summary/sources_checked
+            verdict_raw = _pick_attr(result, "overall_verdict", "verdict", default="UNABLE_TO_VERIFY")
+            verdict = str(getattr(verdict_raw, "value", verdict_raw))
+
+            threat_raw = _pick_attr(result, "primary_threat_type", "threat_category")
+            threat_category = str(getattr(threat_raw, "value", threat_raw)) if threat_raw is not None else None
+
+            summary = str(_pick_attr(result, "recommendation", "summary", default=""))
+            sources_checked = getattr(result, "sources_checked", None)
+            if sources_checked is None:
+                sources = getattr(result, "sources", {}) or {}
+                if isinstance(sources, dict):
+                    sources_checked = list(sources.keys())
+                else:
+                    sources_checked = []
+
             # Format conversational response
-            if result.verdict == "THREAT_DETECTED":
-                message = f"⚠️ **Warning**: This URL has been flagged as a **known threat** by security sources. I strongly recommend **not visiting** this site.\n\n**Threat type**: {result.threat_category or 'General malicious activity'}\n\n**Why it's flagged**: {result.summary}"
-            elif result.verdict == "SUSPICIOUS":
-                message = f"🟡 **Caution**: This URL shows **suspicious characteristics** that could indicate risk.\n\n**Concerns**: {result.summary}\n\nI'd recommend proceeding with caution or avoiding this site."
-            elif result.verdict == "NOT_FLAGGED":
-                message = f"✅ This URL appears to be **not flagged** by threat intelligence sources.\n\n{result.summary}\n\nHowever, always exercise caution with unfamiliar links."
+            if verdict == "THREAT_DETECTED":
+                message = f"⚠️ **Warning**: This URL has been flagged as a **known threat** by security sources. I strongly recommend **not visiting** this site.\n\n**Threat type**: {threat_category or 'General malicious activity'}\n\n**Why it's flagged**: {summary}"
+            elif verdict == "SUSPICIOUS":
+                message = f"🟡 **Caution**: This URL shows **suspicious characteristics** that could indicate risk.\n\n**Concerns**: {summary}\n\nI'd recommend proceeding with caution or avoiding this site."
+            elif verdict == "NOT_FLAGGED":
+                message = f"✅ This URL appears to be **not flagged** by threat intelligence sources.\n\n{summary}\n\nHowever, always exercise caution with unfamiliar links."
             else:
-                message = f"⚠️ I wasn't able to fully verify this URL due to technical limitations.\n\n{result.summary}"
+                message = f"⚠️ I wasn't able to fully verify this URL due to technical limitations.\n\n{summary}"
 
             return AgentResponse(
                 message=message,
                 data={
                     "url": url_match,
-                    "verdict": result.verdict,
+                    "verdict": verdict,
                     "confidence": result.confidence,
-                    "threat_category": result.threat_category,
-                    "risk_hints": result.risk_hints,
-                    "sources_checked": result.sources_checked,
+                    "threat_category": threat_category,
+                    "risk_hints": getattr(result, "risk_hints", []),
+                    "sources_checked": sources_checked,
                 },
                 agent_used="url_analyzer",
                 trace=OrchestrationTrace(
                     route_path=["orchestrator", "url_analyzer"],
-                    routing_decision=f"URL analysis completed: {result.verdict}",
+                    routing_decision=f"URL analysis completed: {verdict}",
                     duration_ms=0,
                 ),
             )
@@ -440,8 +479,41 @@ class OrchestratorAgent:
             r"\b(lost money|money lost|sent money|transferred money)\b",
             r"\b(shared (my )?(password|otp|code|bank details|personal information|id))\b",
             r"\b(how do i report|report this|contact police|law enforcement|scamwatch|ftc|ic3)\b",
+            r"\b(extra support|need support|more support|help me report|what should i do now)\b",
         ]
         return any(re.search(pattern, lowered) for pattern in support_patterns)
+
+    def _extract_support_signal(self, message: str) -> Dict[str, Any]:
+        """Best-effort extractor for receptionist support signals.
+
+        Receptionist prompt may include a compact JSON object such as:
+        {"needs_victim_support": true, ...}
+        """
+        if not message:
+            return {}
+
+        start = message.find("{")
+        end = message.rfind("}")
+        if start == -1 or end == -1 or end <= start:
+            return {}
+
+        try:
+            maybe_obj = json.loads(message[start:end + 1])
+        except json.JSONDecodeError:
+            return {}
+
+        if not isinstance(maybe_obj, dict):
+            return {}
+
+        if "needs_victim_support" not in maybe_obj:
+            return {}
+
+        return {
+            "needs_victim_support": bool(maybe_obj.get("needs_victim_support", False)),
+            "losses_reported": bool(maybe_obj.get("losses_reported", False)),
+            "location": maybe_obj.get("location"),
+            "scammer_info_available": bool(maybe_obj.get("scammer_info_available", False)),
+        }
 
     def _execute_victim_support_team(self, request: AgentRequest, investigation_data: Dict[str, Any]) -> AgentResponse:
         """Execute victim support team helpers and return merged support guidance."""

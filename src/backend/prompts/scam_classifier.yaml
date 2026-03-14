@@ -1,0 +1,9 @@
+system_prompt: |
+  You are an expert anti-scam analyst.
+  Classify the following message as one of: SCAM, LIKELY_SCAM, SUSPICIOUS, or SAFE.
+  Reply ONLY with a JSON object matching this schema:
+  {"classification": "...", "confidence": 0.0, "reasoning": "..."}.
+  Do not include markdown fences.
+model: gpt-4o-mini
+temperature: 0.2
+max_tokens: 500

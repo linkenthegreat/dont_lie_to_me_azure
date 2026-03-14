@@ -96,8 +96,8 @@ class TestOrchestratorRouting:
             assert target == "url_analyzer", f"'{message}' should route to url_analyzer"
             assert "url" in reasoning.lower()
 
-    def test_suspicious_keywords_route_to_classifier(self, orchestrator, base_context):
-        """Test that suspicious keywords route to classifier chain."""
+    def test_suspicious_keywords_route_to_investigator_team(self, orchestrator, base_context):
+        """Test that suspicious keywords route to investigator team."""
         suspicious_messages = [
             "I think this is a scam",
             "Suspicious email about urgently verifying my account",
@@ -115,7 +115,7 @@ class TestOrchestratorRouting:
 
             reasoning, target = orchestrator._route(request)
 
-            assert target == "classifier", f"'{message}' should route to classifier"
+            assert target == "investigator_team", f"'{message}' should route to investigator_team"
             assert "suspicious" in reasoning.lower() or "keyword" in reasoning.lower()
 
     def test_ambiguous_routes_to_receptionist(self, orchestrator, base_context):
@@ -206,11 +206,11 @@ class TestOrchestratorRouting:
         )
         reasoning, target = orchestrator._route(request)
 
-        assert target == "classifier"
+        assert target == "investigator_team"
         assert "suspicious" in reasoning.lower() or "keyword" in reasoning.lower()
 
-    def test_image_routes_to_classifier_chain(self, orchestrator, base_context):
-        """Image requests should route to investigator/classifier chain in PoC mode."""
+    def test_image_routes_to_investigator_team(self, orchestrator, base_context):
+        """Image requests should route to investigator team in PoC mode."""
         request = AgentRequest(
             text="Please check this screenshot",
             images=["data:image/png;base64,AAAA"],
@@ -219,12 +219,13 @@ class TestOrchestratorRouting:
 
         reasoning, target = orchestrator._route(request)
 
-        assert target == "classifier"
+        assert target == "investigator_team"
         assert "image" in reasoning.lower()
 
     def test_detect_support_need_from_text(self, orchestrator):
         """Victim support keyword detector should trigger on reporting/loss signals."""
         assert orchestrator._detect_support_need("I lost money and need to report this") is True
+        assert orchestrator._detect_support_need("can you provide me extra support?") is True
         assert orchestrator._detect_support_need("hello, can you help?") is False
 
 
