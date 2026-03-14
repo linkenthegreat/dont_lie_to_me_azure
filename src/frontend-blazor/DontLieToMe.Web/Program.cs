@@ -9,10 +9,11 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-var apiBase = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:7071/api";
+var configuredApiBase = builder.Configuration["ApiBaseUrl"];
+var apiBase = BuildApiBaseUri(builder.HostEnvironment.BaseAddress, configuredApiBase);
 var useMock = builder.Configuration["UseMockApi"] ?? "false";
 
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiBase) });
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = apiBase });
 
 if (useMock == "true")
     builder.Services.AddScoped<IApiClient, MockApiClient>();
@@ -26,3 +27,31 @@ builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddFluentUIComponents();
 
 await builder.Build().RunAsync();
+
+static Uri BuildApiBaseUri(string hostBaseAddress, string? configuredApiBase)
+{
+    var hostBaseUri = new Uri(hostBaseAddress, UriKind.Absolute);
+
+    if (string.IsNullOrWhiteSpace(configuredApiBase))
+    {
+        return new Uri(hostBaseUri, "api/");
+    }
+
+    if (Uri.TryCreate(configuredApiBase, UriKind.Absolute, out var absoluteUri))
+    {
+        return EnsureUriTrailingSlash(absoluteUri);
+    }
+
+    var relativePath = configuredApiBase.TrimStart('/');
+    return new Uri(hostBaseUri, EnsurePathTrailingSlash(relativePath));
+}
+
+static Uri EnsureUriTrailingSlash(Uri uri)
+{
+    return uri.AbsoluteUri.EndsWith("/") ? uri : new Uri(uri.AbsoluteUri + "/");
+}
+
+static string EnsurePathTrailingSlash(string path)
+{
+    return path.EndsWith("/") ? path : path + "/";
+}
