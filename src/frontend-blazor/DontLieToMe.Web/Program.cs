@@ -39,19 +39,19 @@ static Uri BuildApiBaseUri(string hostBaseAddress, string? configuredApiBase)
 
     if (Uri.TryCreate(configuredApiBase, UriKind.Absolute, out var absoluteUri))
     {
-        return EnsureTrailingSlash(absoluteUri);
+        return EnsureUriTrailingSlash(absoluteUri);
     }
 
     var relativePath = configuredApiBase.TrimStart('/');
-    return new Uri(hostBaseUri, EnsureTrailingSlash(relativePath));
+    return new Uri(hostBaseUri, EnsurePathTrailingSlash(relativePath));
 }
 
-static Uri EnsureTrailingSlash(Uri uri)
+static Uri EnsureUriTrailingSlash(Uri uri)
 {
     return uri.AbsoluteUri.EndsWith("/") ? uri : new Uri(uri.AbsoluteUri + "/");
 }
 
-static string EnsureTrailingSlash(string path)
+static string EnsurePathTrailingSlash(string path)
 {
     return path.EndsWith("/") ? path : path + "/";
 }
