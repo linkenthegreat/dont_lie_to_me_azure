@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -120,7 +120,7 @@ jobs:
               AZURE_AI_API_KEY="@Microsoft.KeyVault(VaultName=${KEYVAULT_NAME};SecretName=AzureAIApiKey)"
 
       - name: Setup Python for deployment package
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
