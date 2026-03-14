@@ -10,7 +10,7 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 var apiBase = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:7071/api";
-var useMock = builder.Configuration["UseMockApi"] ?? "true";
+var useMock = builder.Configuration["UseMockApi"] ?? "false";
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiBase) });
 
