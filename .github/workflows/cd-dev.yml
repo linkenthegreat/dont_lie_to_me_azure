@@ -136,6 +136,7 @@ jobs:
           app-name: func-dont-lie-to-me-dev
           package: src/backend
           scm-do-build-during-deployment: false
+          respect-funcignore: true
 
       - name: Verify PYTHONPATH app setting is applied
         run: |
