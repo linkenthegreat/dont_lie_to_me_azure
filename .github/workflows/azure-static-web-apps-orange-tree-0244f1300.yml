@@ -5,9 +5,21 @@ on:
     branches:
       - main
   pull_request:
+    # Only deploy staging environments for PRs targeting main.
+    # Branch pushes (e.g. linkenthegreat) do NOT create staging environments —
+    # this prevents hitting the SWA staging environment limit.
     types: [opened, synchronize, reopened, closed]
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Action to perform: 'close' to delete a stale staging environment"
+        required: true
+        default: close
+        type: choice
+        options:
+          - close
 
 jobs:
   build_and_deploy_job:
@@ -47,7 +59,9 @@ jobs:
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    # Fires when a PR to main is closed (merged or rejected), OR when manually triggered
+    # via workflow_dispatch to clean up stale staging environments.
+    if: (github.event_name == 'pull_request' && github.event.action == 'closed') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     name: Close Pull Request Job
     steps:
@@ -55,4 +69,5 @@ jobs:
         id: closepullrequest
         uses: Azure/static-web-apps-deploy@v1
         with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_ORANGE_TREE_0244F1300 }}
           action: "close"
