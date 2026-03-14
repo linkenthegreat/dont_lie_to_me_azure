@@ -37,7 +37,8 @@ static Uri BuildApiBaseUri(string hostBaseAddress, string? configuredApiBase)
         return new Uri(hostBaseUri, "api/");
     }
 
-    if (Uri.TryCreate(configuredApiBase, UriKind.Absolute, out var absoluteUri))
+    if (Uri.TryCreate(configuredApiBase, UriKind.Absolute, out var absoluteUri)
+        && (absoluteUri.Scheme == Uri.UriSchemeHttp || absoluteUri.Scheme == Uri.UriSchemeHttps))
     {
         return EnsureUriTrailingSlash(absoluteUri);
     }
