@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using DontLieToMe.Web.Models;
 
 namespace DontLieToMe.Web.Services;
@@ -17,7 +18,35 @@ public class ApiClient : IApiClient
         try
         {
             var response = await _http.PostAsJsonAsync("chat", request);
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                var status = (int)response.StatusCode;
+                var reason = response.ReasonPhrase ?? "HTTP error";
+                var body = await response.Content.ReadAsStringAsync();
+
+                // Backend returns a JSON payload with `error` and `error_type` on failure.
+                // Surface that detail so production issues can be diagnosed from the UI.
+                if (!string.IsNullOrWhiteSpace(body))
+                {
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(body);
+                        if (doc.RootElement.TryGetProperty("error", out var errProp))
+                        {
+                            return new ChatResponse { Error = $"{status} {reason}: {errProp.GetString()}" };
+                        }
+                    }
+                    catch (JsonException)
+                    {
+                        // Ignore parse errors and fall back to raw body text.
+                    }
+
+                    return new ChatResponse { Error = $"{status} {reason}: {body}" };
+                }
+
+                return new ChatResponse { Error = $"{status} {reason}" };
+            }
+
             return await response.Content.ReadFromJsonAsync<ChatResponse>()
                    ?? new ChatResponse { Error = "Empty response" };
         }
