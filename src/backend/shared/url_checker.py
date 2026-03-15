@@ -302,10 +302,25 @@ class URLChecker:
             verdict = VerdictType.UNABLE_TO_VERIFY
             confidence = ConfidenceLevel.LOW
             threat_type = None
+            source_errors = []
+            if google_result.error:
+                source_errors.append(f"GoogleSafeBrowsing: {google_result.error}")
+            if urlhaus_result.error:
+                source_errors.append(f"URLhaus: {urlhaus_result.error}")
+
             recommendation = (
                 "We were unable to fully verify this URL due to service issues. "
                 "Please try again later or use additional security tools."
             )
+
+            if source_errors:
+                recommendation += " Source details: " + "; ".join(source_errors)
+
+            if "urlhaus.abuse.ch/url/" in (url or "").lower():
+                recommendation += (
+                    " Note: this appears to be a URLhaus report page URL, not necessarily the"
+                    " original malicious destination URL."
+                )
 
         return URLCheckResult(
             url=url,
