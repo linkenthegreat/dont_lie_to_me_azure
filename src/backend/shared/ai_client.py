@@ -36,7 +36,8 @@ def _normalize_azure_endpoint(endpoint: str) -> str:
                 if normalized.lower().endswith(suffix):
                         normalized = normalized[: -len(suffix)]
                         break
-        return normalized
+        # Preserve historical behavior where endpoints were passed with a trailing slash.
+        return normalized + "/"
 
 
 class AzureAIClient:
