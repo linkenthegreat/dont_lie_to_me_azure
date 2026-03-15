@@ -225,6 +225,45 @@ class TestURLhausClient(unittest.TestCase):
         self.assertEqual(result.url_status, "offline")
         self.assertIsNone(result.error)
 
+    @patch("shared.threat_intel_sources.requests.post")
+    def test_urlhaus_no_results_is_not_error(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {
+            "query_status": "no_results",
+        }
+        mock_post.return_value = mock_response
+
+        client = URLhausClient(api_key="dummy")
+        result = client.check_url("https://benign.example")
+
+        self.assertFalse(result.is_flagged)
+        self.assertIsNone(result.error)
+
+
+class TestGoogleSafeBrowsingClient(unittest.TestCase):
+    """Tests for Google Safe Browsing request payload shape."""
+
+    @patch("shared.threat_intel_sources.requests.post")
+    def test_gsb_uses_v4_threat_entries_schema(self, mock_post):
+        from shared.threat_intel_sources import GoogleSafeBrowsingClient
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {}
+        mock_post.return_value = mock_response
+
+        client = GoogleSafeBrowsingClient(api_key="dummy")
+        client.check_url("https://example.com")
+
+        kwargs = mock_post.call_args.kwargs
+        sent_json = kwargs["json"]
+        threat_info = sent_json["threatInfo"]
+        self.assertIn("threatEntryTypes", threat_info)
+        self.assertIn("threatEntries", threat_info)
+        self.assertEqual(threat_info["threatEntryTypes"], ["URL"])
+        self.assertEqual(threat_info["threatEntries"], [{"url": "https://example.com"}])
+
 
 class TestURLCheckerRecommendationDiagnostics(unittest.TestCase):
     """Tests for clearer UNABLE_TO_VERIFY recommendation details."""
@@ -267,6 +306,44 @@ class TestURLCheckerRecommendationDiagnostics(unittest.TestCase):
         self.assertIn("GoogleSafeBrowsing: API timeout", result.recommendation)
         self.assertIn("URLhaus: API error: 401 Unauthorized", result.recommendation)
         self.assertIn("URLhaus report page URL", result.recommendation)
+
+    @patch("shared.url_checker.URLChecker._perform_parallel_checks")
+    def test_partial_verification_returns_not_flagged_low_confidence(self, mock_checks):
+        from shared.url_checker import URLChecker
+        from shared.models import GoogleSafeBrowsingResult, URLhausResult, RiskHintsResult
+
+        mock_checks.return_value = (
+            GoogleSafeBrowsingResult(
+                is_flagged=False,
+                threat_types=[],
+                platform_types=[],
+                cache_duration_seconds=3600,
+                error="API timeout",
+                response_time_ms=100,
+            ),
+            URLhausResult(
+                is_flagged=False,
+                threat_type=None,
+                date_added=None,
+                url_status=None,
+                error=None,
+                response_time_ms=100,
+            ),
+            RiskHintsResult(
+                is_suspicious=False,
+                detected_issues=[],
+                risk_score=0.0,
+                checks_performed=[],
+                response_time_ms=1,
+            ),
+        )
+
+        checker = URLChecker(google_sb_api_key="dummy", urlhaus_api_key="dummy")
+        result = checker.check_url("https://example.com", use_cache=False)
+
+        self.assertEqual(result.overall_verdict, VerdictType.NOT_FLAGGED)
+        self.assertEqual(result.confidence, ConfidenceLevel.LOW)
+        self.assertIn("verification was partial", result.recommendation)
 
 
 if __name__ == "__main__":

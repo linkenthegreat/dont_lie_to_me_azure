@@ -71,7 +71,8 @@ class GoogleSafeBrowsingClient:
                         "POTENTIALLY_HARMFUL_APPLICATION",
                     ],
                     "platformTypes": ["WINDOWS", "LINUX", "ANDROID", "MACOS"],
-                    "uris": [url],
+                    "threatEntryTypes": ["URL"],
+                    "threatEntries": [{"url": url}],
                 },
             }
 
@@ -226,7 +227,19 @@ class URLhausClient:
                         response_time_ms=response_time_ms,
                     )
             else:
-                error_msg = data.get("query_status", "unknown error")
+                query_status = str(data.get("query_status", "unknown error"))
+                # URLhaus returns "no_results" for a clean lookup; this is not an API failure.
+                if query_status == "no_results":
+                    return URLhausResult(
+                        is_flagged=False,
+                        threat_type=None,
+                        date_added=None,
+                        url_status=None,
+                        error=None,
+                        response_time_ms=response_time_ms,
+                    )
+
+                error_msg = query_status
                 logger.warning(
                     "URLhaus API error for URL %s: %s", url, error_msg
                 )
