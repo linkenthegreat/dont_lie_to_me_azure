@@ -292,7 +292,15 @@ def chat(req: func.HttpRequest) -> func.HttpResponse:
     
     # Extract request fields
     message = body.get("message", "").strip()
-    images = body.get("images", [])
+    images = body.get("images")
+    if images is None:
+        images = []
+    elif not isinstance(images, list):
+        return func.HttpResponse(
+            json.dumps({"error": "Field 'images' must be a list when provided"}),
+            status_code=400,
+            mimetype="application/json",
+        )
     session_id = body.get("session_id") or str(uuid.uuid4())
     context_data = body.get("context", {})
     
