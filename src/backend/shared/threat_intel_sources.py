@@ -200,9 +200,9 @@ class URLhausClient:
 
             # Check response status
             if data.get("query_status") == "ok":
-                result = data.get("result", "not_found")
+                first_record = self._extract_first_result_record(data)
 
-                if result == "not_found":
+                if first_record is None:
                     return URLhausResult(
                         is_flagged=False,
                         threat_type=None,
@@ -213,9 +213,9 @@ class URLhausClient:
                     )
                 else:
                     # URL is in database
-                    threat_type = result[0].get("threat", "unknown")
-                    date_added = result[0].get("date_added")
-                    url_status = result[0].get("url_status")
+                    threat_type = first_record.get("threat", "unknown")
+                    date_added = first_record.get("date_added")
+                    url_status = first_record.get("url_status")
 
                     return URLhausResult(
                         is_flagged=True,
@@ -262,3 +262,25 @@ class URLhausClient:
                 error=f"Unexpected error: {str(exc)}",
                 response_time_ms=response_time_ms,
             )
+
+    @staticmethod
+    def _extract_first_result_record(data: dict) -> Optional[dict]:
+        """Extract a single URLhaus result record across known response shapes.
+
+        URLhaus responses have changed over time (list and object forms). This
+        helper keeps parsing resilient while preserving existing behavior.
+        """
+        if not isinstance(data, dict):
+            return None
+
+        result = data.get("result")
+        if isinstance(result, list):
+            return result[0] if result else None
+        if isinstance(result, dict):
+            return result
+
+        # Some responses include fields at top-level when query_status is ok.
+        if any(key in data for key in ("threat", "url_status", "date_added")):
+            return data
+
+        return None

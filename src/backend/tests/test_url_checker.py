@@ -21,6 +21,7 @@ from shared.url_validators import (
 )
 from shared.risk_hints import analyze_url_hints
 from shared.models import VerdictType, ConfidenceLevel, CheckURLRequest
+from shared.threat_intel_sources import URLhausClient
 
 
 class TestURLValidators(unittest.TestCase):
@@ -177,6 +178,95 @@ class TestURLCheckerFactory(unittest.TestCase):
             google_sb_api_key="google-secret",
             urlhaus_api_key=None,
         )
+
+
+class TestURLhausClient(unittest.TestCase):
+    """Tests for URLhaus client parsing resilience."""
+
+    @patch("shared.threat_intel_sources.requests.post")
+    def test_urlhaus_accepts_object_result_shape(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {
+            "query_status": "ok",
+            "result": {
+                "threat": "malware",
+                "date_added": "2026-03-15 10:00:00",
+                "url_status": "online",
+            },
+        }
+        mock_post.return_value = mock_response
+
+        client = URLhausClient(api_key="dummy")
+        result = client.check_url("https://evil.example")
+
+        self.assertTrue(result.is_flagged)
+        self.assertEqual(result.threat_type, "malware")
+        self.assertEqual(result.url_status, "online")
+        self.assertIsNone(result.error)
+
+    @patch("shared.threat_intel_sources.requests.post")
+    def test_urlhaus_accepts_top_level_result_shape(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {
+            "query_status": "ok",
+            "threat": "phishing",
+            "date_added": "2026-03-15 10:00:00",
+            "url_status": "offline",
+        }
+        mock_post.return_value = mock_response
+
+        client = URLhausClient(api_key="dummy")
+        result = client.check_url("https://evil.example")
+
+        self.assertTrue(result.is_flagged)
+        self.assertEqual(result.threat_type, "phishing")
+        self.assertEqual(result.url_status, "offline")
+        self.assertIsNone(result.error)
+
+
+class TestURLCheckerRecommendationDiagnostics(unittest.TestCase):
+    """Tests for clearer UNABLE_TO_VERIFY recommendation details."""
+
+    @patch("shared.url_checker.URLChecker._perform_parallel_checks")
+    def test_unable_to_verify_includes_source_details_and_urlhaus_hint(self, mock_checks):
+        from shared.url_checker import URLChecker
+        from shared.models import GoogleSafeBrowsingResult, URLhausResult, RiskHintsResult
+
+        mock_checks.return_value = (
+            GoogleSafeBrowsingResult(
+                is_flagged=False,
+                threat_types=[],
+                platform_types=[],
+                cache_duration_seconds=3600,
+                error="API timeout",
+                response_time_ms=100,
+            ),
+            URLhausResult(
+                is_flagged=False,
+                threat_type=None,
+                date_added=None,
+                url_status=None,
+                error="API error: 401 Unauthorized",
+                response_time_ms=100,
+            ),
+            RiskHintsResult(
+                is_suspicious=False,
+                detected_issues=[],
+                risk_score=0.0,
+                checks_performed=[],
+                response_time_ms=1,
+            ),
+        )
+
+        checker = URLChecker(google_sb_api_key="dummy", urlhaus_api_key="dummy")
+        result = checker.check_url("https://urlhaus.abuse.ch/url/3796493/", use_cache=False)
+
+        self.assertEqual(result.overall_verdict, VerdictType.UNABLE_TO_VERIFY)
+        self.assertIn("GoogleSafeBrowsing: API timeout", result.recommendation)
+        self.assertIn("URLhaus: API error: 401 Unauthorized", result.recommendation)
+        self.assertIn("URLhaus report page URL", result.recommendation)
 
 
 if __name__ == "__main__":
