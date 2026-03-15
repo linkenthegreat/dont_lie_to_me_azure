@@ -12,6 +12,7 @@ permissions:
 env:
   AZURE_LOCATION: australiaeast
   ENVIRONMENT_NAME: prod
+  SHARED_KEYVAULT_NAME: dontlietome-kv
 
 jobs:
   test-backend:
@@ -102,6 +103,16 @@ jobs:
             exit 1
           fi
           KEYVAULT_NAME=$(echo "$KEYVAULT_URL" | sed -E 's#https://([^./]+)\..*#\1#')
+
+          # Optional override: use one shared Key Vault across environments.
+          # Configure GitHub secret AZURE_SHARED_KEYVAULT_NAME (e.g. dontlietome-kv) to enable.
+          SHARED_KV_NAME="$SHARED_KEYVAULT_NAME"
+          if [ -n "$SHARED_KV_NAME" ]; then
+            KEYVAULT_NAME="$SHARED_KV_NAME"
+            KEYVAULT_URL="https://${KEYVAULT_NAME}.vault.azure.net/"
+            echo "Using shared Key Vault override: $KEYVAULT_NAME"
+          fi
+
           echo "KEYVAULT_URL=$KEYVAULT_URL" >> "$GITHUB_ENV"
           echo "KEYVAULT_NAME=$KEYVAULT_NAME" >> "$GITHUB_ENV"
           echo "Key Vault: $KEYVAULT_NAME ($KEYVAULT_URL)"
@@ -248,6 +259,15 @@ jobs:
             exit 1
           fi
           KEYVAULT_NAME=$(echo "$KEYVAULT_URL" | sed -E 's#https://([^./]+)\..*#\1#')
+
+          # Optional override: use one shared Key Vault across environments.
+          SHARED_KV_NAME="$SHARED_KEYVAULT_NAME"
+          if [ -n "$SHARED_KV_NAME" ]; then
+            KEYVAULT_NAME="$SHARED_KV_NAME"
+            KEYVAULT_URL="https://${KEYVAULT_NAME}.vault.azure.net/"
+            echo "Using shared Key Vault override in swap job: $KEYVAULT_NAME"
+          fi
+
           echo "KEYVAULT_URL=$KEYVAULT_URL" >> "$GITHUB_ENV"
           echo "KEYVAULT_NAME=$KEYVAULT_NAME" >> "$GITHUB_ENV"
           echo "Key Vault (swap job): $KEYVAULT_NAME ($KEYVAULT_URL)"
