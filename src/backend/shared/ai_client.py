@@ -18,6 +18,27 @@ _DEFAULT_MAX_TOKENS = 1024
 _DEFAULT_TEMPERATURE = 0.2
 
 
+def _normalize_azure_endpoint(endpoint: str) -> str:
+        """Normalize Azure OpenAI endpoint to resource root URL.
+
+        AzureOpenAI expects azure_endpoint like:
+            https://<resource>.openai.azure.com
+
+        Production settings sometimes provide OpenAI-compatible paths like
+            https://<resource>.openai.azure.com/openai/v1
+        which can trigger 404 due to duplicated path segments.
+        """
+        if not endpoint:
+                return endpoint
+
+        normalized = endpoint.strip().rstrip("/")
+        for suffix in ("/openai/v1", "/openai"):
+                if normalized.lower().endswith(suffix):
+                        normalized = normalized[: -len(suffix)]
+                        break
+        return normalized
+
+
 class AzureAIClient:
     """
     Thin wrapper around the Azure OpenAI SDK for Azure AI Foundry deployments.
@@ -54,7 +75,7 @@ class AzureAIClient:
             logger.info("AzureAIClient initialised with provider='mock'")
             return
 
-        endpoint = config.AZURE_AI_ENDPOINT().strip()
+        endpoint = _normalize_azure_endpoint(config.AZURE_AI_ENDPOINT())
         api_key = config.AZURE_AI_API_KEY().strip()
         api_version = config.AZURE_AI_API_VERSION()
         self._model = config.AZURE_AI_DEPLOYMENT_NAME()
@@ -63,10 +84,10 @@ class AzureAIClient:
         # with fallback to the normal environment variables.
         if config.AZURE_KEYVAULT_URL():
             try:
-                endpoint = get_secret(
+                endpoint = _normalize_azure_endpoint(get_secret(
                     config.AZURE_AI_ENDPOINT_SECRET_NAME(),
                     fallback_env_var="AZURE_AI_ENDPOINT",
-                ).strip()
+                ))
             except ValueError:
                 # Endpoint secret is optional if endpoint env var is already present.
                 pass
