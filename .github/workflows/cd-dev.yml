@@ -17,6 +17,7 @@ env:
   AZURE_LOCATION: australiaeast
   ENVIRONMENT_NAME: dev
   SHARED_KEYVAULT_NAME: dontlietome-kv
+  AZURE_CORE_OUTPUT: json
 
 jobs:
   test-backend:
