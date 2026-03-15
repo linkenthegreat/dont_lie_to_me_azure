@@ -14,6 +14,7 @@ env:
   ENVIRONMENT_NAME: prod
   SHARED_KEYVAULT_NAME: dontlietome-kv
   AZURE_CORE_OUTPUT: json
+  ENABLE_KV_SECRET_SEED: "false"
 
 jobs:
   test-backend:
@@ -125,6 +126,10 @@ jobs:
         #   --assignee-object-id <SP_OID> --scope <KV_RESOURCE_ID>
         continue-on-error: true
         run: |
+          if [ "$ENABLE_KV_SECRET_SEED" != "true" ]; then
+            echo "Skipping Key Vault secret seeding (ENABLE_KV_SECRET_SEED=$ENABLE_KV_SECRET_SEED)."
+            exit 0
+          fi
           az keyvault secret set \
             --vault-name "$KEYVAULT_NAME" \
             --name AzureAIApiKey \
