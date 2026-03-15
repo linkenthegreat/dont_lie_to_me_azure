@@ -22,7 +22,7 @@ jobs:
         working-directory: src/backend
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Bicep CLI
         run: az bicep install
@@ -60,7 +60,7 @@ jobs:
     needs: [test-backend, validate-bicep]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -328,7 +328,7 @@ jobs:
     needs: swap-to-production
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
