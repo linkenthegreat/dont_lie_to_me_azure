@@ -204,6 +204,62 @@ class TestChatEndpoint:
         assert isinstance(trace["route_path"], list)
         assert len(trace["route_path"]) > 0
 
+    def test_image_extracted_url_triggers_coordinated_url_check(self, mock_url_checker, mock_ai_client):
+        """If analyzer extracts a URL from image text, classifier flow should run URL checker and include url_analysis."""
+        import azure.functions as func
+
+        mock_ai_client.chat.side_effect = [
+            json.dumps({
+                "classification": "SAFE",
+                "confidence": 0.4,
+                "reasoning": "No obvious scam text in user message",
+            }),
+            json.dumps({
+                "immediate_actions": ["Do not click the link"],
+                "reporting_steps": ["Report SMS phishing to carrier"],
+                "prevention_tips": ["Verify with official courier site"],
+                "resources": ["https://www.scamwatch.gov.au/"],
+            }),
+        ]
+        mock_ai_client.chat_with_image.return_value = json.dumps({
+            "red_flags": ["Delivery failure lure"],
+            "persuasion_techniques": ["Urgency"],
+            "impersonation_indicators": ["Courier-like language"],
+            "extracted_urls": ["http://110.37.66.90:59355/i"],
+            "summary": "Image includes a suspicious delivery URL.",
+        })
+
+        threat_result = MagicMock()
+        threat_result.overall_verdict = "THREAT_DETECTED"
+        threat_result.confidence = "HIGH"
+        threat_result.primary_threat_type = "MALWARE"
+        threat_result.recommendation = "Known malicious endpoint"
+        mock_url_checker.check_url.return_value = threat_result
+
+        req_body = {
+            "message": "Can you check this screenshot?",
+            "images": ["data:image/png;base64,iVBORw0KGgoAAAANSUhEU..."],
+            "session_id": "test_image_url_coordination_001",
+        }
+
+        req = func.HttpRequest(
+            method="POST",
+            url="/api/chat",
+            body=json.dumps(req_body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+
+        from function_app import chat
+        response = chat(req)
+
+        assert response.status_code == 200
+        data = json.loads(response.get_body())
+        assert "data" in data
+        assert "url_analysis" in data["data"]
+        assert len(data["data"]["url_analysis"]) >= 1
+        assert data["data"]["url_analysis"][0]["verdict"] == "THREAT_DETECTED"
+        mock_url_checker.check_url.assert_called_once_with("http://110.37.66.90:59355/i")
+
     def test_victim_support_team_activated_when_flag_set(self, mock_ai_client):
         """When metadata.needs_victim_support=True the orchestrator must run the
         victim support team and include reporting_agencies in the response data."""

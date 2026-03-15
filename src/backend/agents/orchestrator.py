@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Optional
 
 from .base_models import AgentRequest, AgentResponse, AgentContext, OrchestrationTrace
 from shared.url_checker import URLChecker, get_url_checker
+from shared.url_validators import extract_urls
 from shared.ai_client import AzureAIClient
 from shared.prompts import get_prompt_config
 
@@ -367,6 +368,7 @@ class OrchestratorAgent:
             # Always-on image path for PoC: analyze visible text/context and image forensics.
             analysis_data = None
             image_analysis = None
+            url_analysis = []
             analyzer_config = get_prompt_config("message_analyzer")
             if request.images:
                 image_base64, image_media_type = self._normalize_image_input(request.images[0])
@@ -380,6 +382,23 @@ class OrchestratorAgent:
                 )
                 analysis_data = json.loads(analysis_raw)
                 image_analysis = self._run_image_forensics(image_base64, image_media_type)
+                url_analysis = self._analyze_urls_from_context(request.text, analysis_data)
+
+                # Escalate classification when URL threat checks detect strong risk.
+                if any(item.get("verdict") == "THREAT_DETECTED" for item in url_analysis):
+                    if classification not in ["SCAM", "LIKELY_SCAM"]:
+                        classification = "LIKELY_SCAM"
+                        confidence = max(float(confidence or 0.0), 0.85)
+                        base_reasoning = classification_data.get("reasoning", "")
+                        suffix = "URL extracted from image was flagged by threat intelligence sources."
+                        classification_data["reasoning"] = f"{base_reasoning} {suffix}".strip()
+                elif any(item.get("verdict") == "SUSPICIOUS" for item in url_analysis):
+                    if classification in ["SAFE", "UNKNOWN"]:
+                        classification = "SUSPICIOUS"
+                        confidence = max(float(confidence or 0.0), 0.65)
+                        base_reasoning = classification_data.get("reasoning", "")
+                        suffix = "URL extracted from image appears suspicious and warrants caution."
+                        classification_data["reasoning"] = f"{base_reasoning} {suffix}".strip()
 
             # Step 2: If high risk, trigger deeper analysis
             if classification in ["SCAM", "LIKELY_SCAM"] and confidence > 0.6:
@@ -414,6 +433,7 @@ class OrchestratorAgent:
                         "reasoning": classification_data.get("reasoning", ""),
                         "analysis": analysis_data,
                         "image_analysis": image_analysis,
+                        "url_analysis": url_analysis,
                         "guidance": guidance_data,
                     },
                     agent_used="classifier_chain",
@@ -439,6 +459,7 @@ class OrchestratorAgent:
                         "reasoning": classification_data.get("reasoning", ""),
                         "analysis": analysis_data,
                         "image_analysis": image_analysis,
+                        "url_analysis": url_analysis,
                     },
                     agent_used="classifier",
                     trace=OrchestrationTrace(
@@ -494,6 +515,65 @@ class OrchestratorAgent:
         except Exception as exc:
             logger.warning("Image forensics skipped due to error: %s", exc)
             return None
+
+    def _analyze_urls_from_context(self, text: str, analysis_data: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Extract URLs from text + analyzer output and run coordinated URL checks."""
+        if not self.url_checker:
+            return []
+
+        candidate_text_parts: List[str] = [text or ""]
+        if isinstance(analysis_data, dict):
+            extracted_urls = analysis_data.get("extracted_urls", [])
+            if isinstance(extracted_urls, list):
+                candidate_text_parts.extend([u for u in extracted_urls if isinstance(u, str)])
+
+            for key in ("summary",):
+                value = analysis_data.get(key)
+                if isinstance(value, str):
+                    candidate_text_parts.append(value)
+
+            for key in ("red_flags", "impersonation_indicators"):
+                value = analysis_data.get(key)
+                if isinstance(value, list):
+                    candidate_text_parts.extend([item for item in value if isinstance(item, str)])
+
+        seen = set()
+        urls: List[str] = []
+        for part in candidate_text_parts:
+            for url in extract_urls(part):
+                if url not in seen:
+                    seen.add(url)
+                    urls.append(url)
+
+        results: List[Dict[str, Any]] = []
+        for url in urls[:3]:
+            try:
+                result = self.url_checker.check_url(url)
+                verdict_raw = getattr(result, "overall_verdict", getattr(result, "verdict", "UNABLE_TO_VERIFY"))
+                threat_raw = getattr(result, "primary_threat_type", getattr(result, "threat_category", None))
+                recommendation = getattr(result, "recommendation", getattr(result, "summary", ""))
+                results.append(
+                    {
+                        "url": url,
+                        "verdict": str(getattr(verdict_raw, "value", verdict_raw)),
+                        "confidence": str(getattr(result, "confidence", "LOW")),
+                        "threat_category": str(getattr(threat_raw, "value", threat_raw)) if threat_raw is not None else None,
+                        "summary": str(recommendation),
+                    }
+                )
+            except Exception as exc:
+                logger.warning("Image-derived URL check failed for %s: %s", url, exc)
+                results.append(
+                    {
+                        "url": url,
+                        "verdict": "UNABLE_TO_VERIFY",
+                        "confidence": "LOW",
+                        "threat_category": None,
+                        "summary": f"URL check failed: {str(exc)}",
+                    }
+                )
+
+        return results
 
     def _detect_support_need(self, text: str) -> bool:
         """Detect whether victim support should be engaged from user text."""

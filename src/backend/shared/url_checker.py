@@ -297,6 +297,20 @@ class URLChecker:
                 "However, exercise normal caution when visiting any website."
             )
 
+        elif not google_flagged and not urlhaus_flagged and not risk_hints_suspicious and (
+            not google_result.error or not urlhaus_result.error
+        ):
+            # Partial verification: one source succeeded with no detections,
+            # while another source was unavailable.
+            verdict = VerdictType.NOT_FLAGGED
+            confidence = ConfidenceLevel.LOW
+            threat_type = None
+            recommendation = (
+                "This URL was not flagged by available threat intelligence sources, "
+                "but verification was partial because one source was unavailable. "
+                "Continue to exercise caution."
+            )
+
         else:
             # APIs not available
             verdict = VerdictType.UNABLE_TO_VERIFY
