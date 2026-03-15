@@ -369,15 +369,17 @@ class OrchestratorAgent:
             image_analysis = None
             analyzer_config = get_prompt_config("message_analyzer")
             if request.images:
+                image_base64, image_media_type = self._normalize_image_input(request.images[0])
                 analysis_raw = self.ai_client.chat_with_image(
                     system_prompt=analyzer_config.get("system_prompt", ""),
                     user_message=request.text,
-                    image_base64=request.images[0],
+                    image_base64=image_base64,
+                    image_media_type=image_media_type,
                     max_tokens=analyzer_config.get("max_tokens", 1000),
                     temperature=analyzer_config.get("temperature", 0.3),
                 )
                 analysis_data = json.loads(analysis_raw)
-                image_analysis = self._run_image_forensics(request.images[0])
+                image_analysis = self._run_image_forensics(image_base64, image_media_type)
 
             # Step 2: If high risk, trigger deeper analysis
             if classification in ["SCAM", "LIKELY_SCAM"] and confidence > 0.6:
@@ -461,13 +463,34 @@ class OrchestratorAgent:
                 ),
             )
 
-    def _run_image_forensics(self, image_data: str) -> Optional[Dict[str, Any]]:
+    @staticmethod
+    def _normalize_image_input(image_data: str) -> tuple[str, str]:
+        """Normalize image payload to raw base64 plus media type.
+
+        Supports either raw base64 or data URI input.
+        """
+        default_media_type = "image/png"
+        if not image_data:
+            return "", default_media_type
+
+        if image_data.startswith("data:") and "," in image_data:
+            header, payload = image_data.split(",", 1)
+            media_type = default_media_type
+            try:
+                media_type = header.split(";", 1)[0].split(":", 1)[1]
+            except Exception:
+                media_type = default_media_type
+            return payload, media_type
+
+        return image_data, default_media_type
+
+    def _run_image_forensics(self, image_data: str, image_media_type: str = "image/png") -> Optional[Dict[str, Any]]:
         """Best-effort image authenticity analysis using existing service."""
         try:
             from services.image_analysis_service import analyze_image
 
-            raw_image = image_data.split(",", 1)[1] if image_data.startswith("data:") and "," in image_data else image_data
-            return analyze_image(raw_image)
+            raw_image, detected_media_type = self._normalize_image_input(image_data)
+            return analyze_image(raw_image, detected_media_type or image_media_type)
         except Exception as exc:
             logger.warning("Image forensics skipped due to error: %s", exc)
             return None
