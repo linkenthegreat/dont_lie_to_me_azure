@@ -260,6 +260,82 @@ class TestChatEndpoint:
         assert data["data"]["url_analysis"][0]["verdict"] == "THREAT_DETECTED"
         mock_url_checker.check_url.assert_called_once_with("http://110.37.66.90:59355/i")
 
+    def test_image_with_non_json_analysis_does_not_fail_request(self, mock_ai_client):
+        """Complex or non-text images may cause prose output; chat should degrade gracefully instead of erroring."""
+        import azure.functions as func
+
+        mock_ai_client.chat.return_value = json.dumps({
+            "classification": "SAFE",
+            "confidence": 0.4,
+            "reasoning": "No obvious text scam indicators in user message.",
+        })
+        mock_ai_client.chat_with_image.return_value = "This appears to be a normal personal photo with no readable scam text."
+
+        req_body = {
+            "message": "Please check this image",
+            "images": ["data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD..."],
+            "session_id": "test_image_non_json_001",
+        }
+
+        req = func.HttpRequest(
+            method="POST",
+            url="/api/chat",
+            body=json.dumps(req_body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+
+        from function_app import chat
+        response = chat(req)
+
+        assert response.status_code == 200
+        data = json.loads(response.get_body())
+        assert data["agent_used"] in {"classifier", "classifier_chain"}
+        assert "data" in data
+        assert "analysis" in data["data"]
+        assert "summary" in data["data"]["analysis"]
+
+    def test_image_with_non_json_guidance_does_not_fail_high_risk_path(self, mock_ai_client):
+        """High-risk image flows should survive malformed guidance JSON and return fallback guidance."""
+        import azure.functions as func
+
+        mock_ai_client.chat.side_effect = [
+            json.dumps({
+                "classification": "SCAM",
+                "confidence": 0.95,
+                "reasoning": "Obvious recruitment scam indicators.",
+            }),
+            "Do not engage. Block the sender. Report the account.",
+        ]
+        mock_ai_client.chat_with_image.return_value = json.dumps({
+            "red_flags": ["Too good to be true pay", "WhatsApp redirection"],
+            "persuasion_techniques": ["Urgency"],
+            "impersonation_indicators": ["Fake recruiter"],
+            "extracted_urls": ["https://wa.me/61482097580"],
+            "summary": "Recruitment scam screenshot.",
+        })
+
+        req_body = {
+            "message": "Check this recruiter screenshot",
+            "images": ["data:image/png;base64,iVBORw0KGgoAAAANSUhEU..."],
+            "session_id": "test_image_bad_guidance_001",
+        }
+
+        req = func.HttpRequest(
+            method="POST",
+            url="/api/chat",
+            body=json.dumps(req_body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+
+        from function_app import chat
+        response = chat(req)
+
+        assert response.status_code == 200
+        data = json.loads(response.get_body())
+        assert data["agent_used"] == "classifier_chain"
+        assert "guidance" in data["data"]
+        assert "immediate_actions" in data["data"]["guidance"]
+
     def test_victim_support_team_activated_when_flag_set(self, mock_ai_client):
         """When metadata.needs_victim_support=True the orchestrator must run the
         victim support team and include reporting_agencies in the response data."""

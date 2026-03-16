@@ -361,7 +361,14 @@ class OrchestratorAgent:
                 temperature=classifier_config.get("temperature", 0.2),
             )
 
-            classification_data = json.loads(classify_response)
+            classification_data = self._parse_json_object(
+                classify_response,
+                fallback={
+                    "classification": "SUSPICIOUS" if request.images else "UNKNOWN",
+                    "confidence": 0.5,
+                    "reasoning": str(classify_response),
+                },
+            )
             classification = classification_data.get("classification", "UNKNOWN")
             confidence = classification_data.get("confidence", 0.0)
 
@@ -380,7 +387,16 @@ class OrchestratorAgent:
                     max_tokens=analyzer_config.get("max_tokens", 1000),
                     temperature=analyzer_config.get("temperature", 0.3),
                 )
-                analysis_data = json.loads(analysis_raw)
+                analysis_data = self._parse_json_object(
+                    analysis_raw,
+                    fallback={
+                        "red_flags": [],
+                        "persuasion_techniques": [],
+                        "impersonation_indicators": [],
+                        "extracted_urls": [],
+                        "summary": str(analysis_raw),
+                    },
+                )
                 image_analysis = self._run_image_forensics(image_base64, image_media_type)
                 url_analysis = self._analyze_urls_from_context(request.text, analysis_data)
 
@@ -409,7 +425,16 @@ class OrchestratorAgent:
                         max_tokens=analyzer_config.get("max_tokens", 1000),
                         temperature=analyzer_config.get("temperature", 0.3),
                     )
-                    analysis_data = json.loads(analysis_response)
+                    analysis_data = self._parse_json_object(
+                        analysis_response,
+                        fallback={
+                            "red_flags": [],
+                            "persuasion_techniques": [],
+                            "impersonation_indicators": [],
+                            "extracted_urls": [],
+                            "summary": str(analysis_response),
+                        },
+                    )
 
                 # Step 3: Generate guidance
                 guidance_config = get_prompt_config("guidance_generator")
@@ -419,7 +444,19 @@ class OrchestratorAgent:
                     max_tokens=guidance_config.get("max_tokens", 1200),
                     temperature=guidance_config.get("temperature", 0.4),
                 )
-                guidance_data = json.loads(guidance_response)
+                guidance_data = self._parse_json_object(
+                    guidance_response,
+                    fallback={
+                        "immediate_actions": [
+                            "Do not click links, reply, or share personal information until the content is verified.",
+                        ],
+                        "reporting_steps": [],
+                        "prevention_tips": [
+                            "Verify requests using official contact channels.",
+                        ],
+                        "resources": [],
+                    },
+                )
 
                 message = f"⚠️ **{classification}** (Confidence: {confidence:.0%})\n\n"
                 message += f"**Analysis**: {analysis_data.get('summary', 'No summary available')}\n\n"
@@ -574,6 +611,39 @@ class OrchestratorAgent:
                 )
 
         return results
+
+    @staticmethod
+    def _parse_json_object(raw: Any, fallback: Dict[str, Any]) -> Dict[str, Any]:
+        """Best-effort parse of model output into a JSON object.
+
+        Models sometimes return prose, fenced JSON, or mixed text depending on
+        image complexity. This keeps the chat flow resilient instead of failing
+        the whole request.
+        """
+        if isinstance(raw, dict):
+            return raw
+
+        text = "" if raw is None else str(raw).strip()
+        if not text:
+            return dict(fallback)
+
+        candidates = [text]
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            candidates.append(text[start:end + 1])
+
+        for candidate in candidates:
+            try:
+                parsed = json.loads(candidate)
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                continue
+
+        parsed_fallback = dict(fallback)
+        parsed_fallback.setdefault("summary", text)
+        return parsed_fallback
 
     def _detect_support_need(self, text: str) -> bool:
         """Detect whether victim support should be engaged from user text."""
